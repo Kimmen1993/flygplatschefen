@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Flygplatschefen – Bygg och se</title>
+<style>
+  :root {
+    --panel: rgba(10, 16, 28, .82);
+    --line: rgba(255, 255, 255, .13);
+    --ink: #e8eef7;
+    --muted: #93a1b5;
+    --ok: #38d39f;
+    --warn: #ffcf6b;
+    --bad: #ff5a5a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #070b14; color: var(--ink);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; touch-action: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 12px; }
+  .hidden { display: none !important; }
+
+  #top { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; display: flex; gap: 16px; align-items: center; padding: 8px 12px; z-index: 5; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; line-height: 1.15; }
+  .stat b { font-size: 17px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .grow { flex: 1; }
+  .btn { background: rgba(255,255,255,.08); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: rgba(255,255,255,.16); }
+  .btn.on { background: rgba(56,211,159,.25); border-color: var(--ok); }
+  .btn.go { background: var(--ok); color: #062317; border: 0; padding: 9px 16px; font-size: 16px; }
+  .btn.go:hover { filter: brightness(1.08); }
+  .btn.big { background: var(--ok); color: #062317; border: 0; padding: 12px 22px; font-size: 17px; border-radius: 10px; }
+  #speeds { display: flex; gap: 4px; }
+
+  #tools { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 5; display: flex; gap: 6px; padding: 6px; max-width: calc(100% - 16px); overflow-x: auto; }
+  .tool { display: flex; flex-direction: column; align-items: center; min-width: 74px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
+  .tool:hover { background: rgba(255,255,255,.08); }
+  .tool.on { background: rgba(56,211,159,.2); border-color: var(--ok); }
+  .tool .ic { font-size: 20px; line-height: 1.2; }
+  .tool .nm { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .tool .pr { font-size: 11.5px; color: var(--muted); }
+  .tool.locked { opacity: .35; pointer-events: none; }
+
+  #check { position: fixed; left: 8px; top: calc(74px + env(safe-area-inset-top)); z-index: 4; padding: 10px 14px; max-width: 300px; font-size: 14px; }
+  #check h3 { margin: 0 0 6px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #check div { margin: 3px 0; }
+  #check .y { color: var(--ok); }
+  #check .n { color: var(--muted); }
+
+  #toasts { position: fixed; top: calc(74px + env(safe-area-inset-top)); right: 8px; z-index: 4; display: flex; flex-direction: column; gap: 6px; max-width: min(340px, 70vw); pointer-events: none; align-items: flex-end; }
+  .toast { padding: 7px 11px; font-size: 14px; animation: tin .25s ease-out; }
+  .toast.bad { border-color: rgba(255,90,90,.7); color: #ffd0d0; }
+  .toast.good { border-color: rgba(56,211,159,.5); }
+  .toast.warn { border-color: rgba(255,207,107,.6); }
+  .toast.out { opacity: 0; transition: opacity .6s; }
+  @keyframes tin { from { transform: translateX(10px); opacity: 0; } }
+
+  #tip { position: fixed; z-index: 6; pointer-events: none; padding: 4px 8px; font-size: 12.5px; border-radius: 7px; background: rgba(8,12,22,.9); border: 1px solid var(--line); transform: translate(14px, 14px); white-space: nowrap; }
+  #tip.bad { color: #ffb3b3; }
+
+  #labels { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+  .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 2px 7px; border-radius: 7px; background: rgba(8, 12, 22, .78); border: 1px solid var(--line); font-size: 12px; text-align: center; }
+  .lbl.place { color: var(--muted); font-size: 11.5px; }
+  .lbl.prob { border-color: var(--warn); color: var(--warn); }
+  .lbl.bad { border-color: var(--bad); color: #ffc4c4; background: rgba(70, 10, 16, .85); animation: pulse .9s infinite; }
+  .lbl b { color: var(--ink); }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(255, 90, 90, .25); } }
+
+  .modal { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(4, 7, 14, .62); padding: 16px; }
+  .modal > .panel { max-width: 640px; width: 100%; padding: 22px 24px; max-height: 100%; overflow-y: auto; }
+  .modal h1 { margin: 0 0 6px; font-size: 26px; }
+  .modal p { color: #c5d0de; margin: 8px 0; }
+  .modal ol { padding-left: 20px; color: #c5d0de; margin: 10px 0 14px; }
+  .modal li { margin: 5px 0; }
+  .modal .small { font-size: 13px; color: var(--muted); }
+  .stars { font-size: 42px; letter-spacing: 6px; color: var(--warn); margin: 4px 0; text-align: center; }
+  .sumgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; }
+  .sumgrid div { background: rgba(255,255,255,.05); border-radius: 9px; padding: 8px; text-align: center; }
+  .sumgrid b { display: block; font-size: 20px; }
+  .sumgrid span { font-size: 11.5px; color: var(--muted); }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+  .card { text-align: left; background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; color: var(--ink); font: inherit; }
+  .card:hover { border-color: var(--ok); background: rgba(56,211,159,.1); }
+  .card .ic { font-size: 26px; }
+  .card b { display: block; margin: 4px 0; font-size: 15px; }
+  .card span { font-size: 13px; color: #b9c5d4; }
+
+  @media (max-width: 760px) {
+    #top { gap: 10px; }
+    .stat b { font-size: 15px; }
+    #check { font-size: 12px; max-width: 230px; padding: 8px 10px; top: calc(126px + env(safe-area-inset-top)); }
+    #check h3 { font-size: 12px; }
+    .tool { min-width: 62px; padding: 5px 4px; }
+    .cards { grid-template-columns: 1fr; }
+    .sumgrid { grid-template-columns: repeat(2, 1fr); }
+    #toasts { top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+<div id="top" class="panel">
+  <div class="stat"><b id="day">Dag 1</b><span id="phase">Bygg</span></div>
+  <div class="stat"><b id="money">3 000 kr</b><span>Kassa</span></div>
+  <div class="stat"><b id="deps">0/0</b><span>Avgångar</span></div>
+  <div class="stat"><b id="ontime">–</b><span>I tid</span></div>
+  <div class="grow"></div>
+  <div id="speeds" class="hidden">
+    <button class="btn" data-sp="0">❚❚</button>
+    <button class="btn on" data-sp="1">1×</button>
+    <button class="btn" data-sp="2">2×</button>
+    <button class="btn" data-sp="4">4×</button>
+  </div>
+  <button class="btn go" id="openBtn">Öppna flygplatsen ▶</button>
+</div>
+
+<div id="check" class="panel"></div>
+<div id="toasts"></div>
+<div id="labels"></div>
+<div id="tip" class="hidden"></div>
+
+<div id="tools" class="panel">
+  <button class="tool" data-tool="look"><span class="ic">✋</span><span class="nm">Titta</span><span class="pr">vrid vyn</span></button>
+  <button class="tool on" data-tool="taxi"><span class="ic">🛣️</span><span class="nm">Taxibana</span><span class="pr" data-cost="taxi"></span></button>
+  <button class="tool" data-tool="road"><span class="ic">🚚</span><span class="nm">Serviceväg</span><span class="pr" data-cost="road"></span></button>
+  <button class="tool" data-tool="gate"><span class="ic">🛬</span><span class="nm">Gate</span><span class="pr" data-cost="gate"></span></button>
+  <button class="tool locked" data-tool="biggate"><span class="ic">🛫</span><span class="nm">Storgate</span><span class="pr" data-cost="biggate"></span></button>
+  <button class="tool" data-tool="depot"><span class="ic">⛽</span><span class="nm">Tankdepå</span><span class="pr" data-cost="depot"></span></button>
+  <button class="tool" data-tool="erase"><span class="ic">🧹</span><span class="nm">Riv</span><span class="pr">50% tillbaka</span></button>
+</div>
+
+<div id="intro" class="modal">
+  <div class="panel">
+    <h1>Bygg och se</h1>
+    <p>Du har en landningsbana och en terminal, men inget däremellan. <b>Du bygger flygplatsen. Planen och tankbilarna kör sen själva</b> efter det du har byggt. Du klickar aldrig på ett plan.</p>
+    <ol>
+      <li><b>Rita taxibanor</b> genom att dra med musen eller fingret, från banan fram till terminalen.</li>
+      <li><b>Sätt ut gater</b> på raden precis framför terminalen.</li>
+      <li><b>Bygg en tankdepå.</b> Tankbilarna kör på taxibanor och servicevägar, men de får vänta när plan är i vägen.</li>
+      <li>Tryck <b>Öppna flygplatsen</b> och se om trafiken flyter. Du kan bygga om när som helst, även medan planen rullar.</li>
+    </ol>
+    <p>Tänk på det här: planen behöver en <b>avfart en bit in på banan</b> efter landning, och för att starta behöver de <b>gott om bana framför sig</b>. Två plan kan inte mötas på en smal taxibana. Varje dag kommer fler plan, och efter varje dag väljer du ett nytt erbjudande.</p>
+    <p class="small">Vrid vyn: välj ✋ Titta och dra, eller högerdra och använd två fingrar. Zooma: scrolla eller nyp.</p>
+    <p style="text-align:center;margin-top:16px"><button class="btn big" id="startBtn">Börja bygga</button></p>
+  </div>
+</div>
+
+<div id="summary" class="modal hidden">
+  <div class="panel">
+    <h1 id="sumTitle">Dag 1 klar</h1>
+    <div class="stars" id="sumStars"></div>
+    <div class="sumgrid" id="sumGrid"></div>
+    <p id="sumTip" class="small" style="text-align:center"></p>
+    <h3 style="margin:14px 0 4px">Välj ett erbjudande inför dag <span id="nextDay">2</span></h3>
+    <div class="cards" id="cards"></div>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
