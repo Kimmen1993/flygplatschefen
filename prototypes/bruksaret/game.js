@@ -323,6 +323,8 @@ function advice() {
   if (T < 1260) return `Ugnen är farligt kall! Höj blästern direkt (det verkar på en gång) och sänk malmsatsen till ${rr.toFixed(2).replace('.', ',')} eller lägre.`;
   if (f !== null && f < 1320) return `Satserna i schaktet gör ugnen för kall om ett dygn. Sänk malmsatsen till ≈ ${rr.toFixed(2).replace('.', ',')} och höj blästern lite.`;
   if (f !== null && f > 1490) return `Ugnen kommer gå för varmt (slösar kol, sliter fodret). Höj malmsatsen till ≈ ${rr.toFixed(2).replace('.', ',')}.`;
+  if (S.ratio > rr + 0.1) return `Malmsatsen ${S.ratio.toFixed(2).replace('.', ',')} är för hög – när de satserna når härden (om ungefär ett halvt dygn) blir ugnen för kall. Lagom är ≈ ${rr.toFixed(2).replace('.', ',')}.`;
+  if (S.ratio < rr - 0.15) return `Malmsatsen ${S.ratio.toFixed(2).replace('.', ',')} är låg – ugnen kommer gå varmt och slösa kol. Lagom är ≈ ${rr.toFixed(2).replace('.', ',')}.`;
   if (S.ansats > 40) return 'Mycket ansats i schaktet – kör lite varmare (lägre malmsats) en tid så smälter den bort.';
   return `Ugnen går bra. Lagom malmsats nu: ≈ ${rr.toFixed(2).replace('.', ',')}.`;
 }
