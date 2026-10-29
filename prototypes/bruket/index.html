@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bruket – blåsningen 1780</title>
+<style>
+  :root {
+    --panel: rgba(18, 16, 14, .84);
+    --line: rgba(255, 240, 220, .14);
+    --ink: #f3ece2;
+    --muted: #b3a796;
+    --ok: #7ccf8a;
+    --warn: #f2b84b;
+    --bad: #ef6b5b;
+    --fire: #ff8a3c;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0c0b; color: var(--ink);
+    font: 14px/1.4 Georgia, "Times New Roman", serif; }
+  .ui, button, input { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  canvas { display: block; touch-action: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 10px; }
+  .hidden { display: none !important; }
+  h3 { margin: 0 0 6px; font: 600 11px system-ui; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .btn { background: rgba(255,240,220,.1); color: var(--ink); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; font: 600 13px system-ui; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: rgba(255,240,220,.18); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.on { background: rgba(255,138,60,.25); border-color: var(--fire); }
+  .btn.fire { background: #c2521d; border-color: #ff8a3c; color: #fff; }
+  .btn.fire.pulse { animation: pulse 0.9s infinite; }
+  .btn.big { background: #c2521d; color: #fff; border: 0; padding: 12px 22px; font-size: 16px; border-radius: 9px; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(255, 138, 60, .35); } }
+
+  #top { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 14px; align-items: center; padding: 7px 14px; white-space: nowrap; }
+  #date { font-size: 17px; font-weight: 700; }
+  #season { font: 12px system-ui; color: var(--muted); }
+  .sp { display: flex; gap: 4px; }
+
+  #furnace { position: fixed; left: 8px; top: calc(8px + env(safe-area-inset-top)); width: 290px; z-index: 4; padding: 12px 14px; max-height: calc(100% - 16px); overflow-y: auto; }
+  #stock { position: fixed; right: 8px; top: calc(8px + env(safe-area-inset-top)); width: 270px; z-index: 4; padding: 12px 14px; max-height: calc(100% - 16px); overflow-y: auto; }
+
+  .tbig { display: flex; align-items: baseline; gap: 8px; }
+  .tbig b { font: 800 30px system-ui; font-variant-numeric: tabular-nums; }
+  .tbig span { font: 13px system-ui; color: var(--muted); }
+  .tbar { position: relative; height: 12px; border-radius: 6px; margin: 4px 0 2px;
+    background: linear-gradient(90deg, #3a5a8c 0%, #4a6fa0 22%, #c58b3b 30%, #7ccf8a 48%, #7ccf8a 74%, #f2b84b 82%, #ef6b5b 100%); }
+  .tbar i { position: absolute; top: -4px; width: 4px; height: 20px; background: #fff; border-radius: 2px; box-shadow: 0 0 6px #000; transition: left .25s; }
+  .tscale { display: flex; justify-content: space-between; font: 10.5px system-ui; color: var(--muted); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 3px 0; font: 13px system-ui; }
+  .row b { font-variant-numeric: tabular-nums; }
+  .meter { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; position: relative; }
+  .meter i { display: block; height: 100%; transition: width .25s; }
+  .meter .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--bad); }
+  .sect { margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--line); }
+  .read { font: italic 13px Georgia, serif; color: #e6d7c2; margin: 3px 0; }
+  .read em { font-style: normal; color: var(--muted); font: 11px system-ui; }
+
+  #shaftWrap { display: flex; gap: 10px; align-items: stretch; }
+  #shaft { width: 46px; height: 150px; position: relative; border-radius: 4px 4px 2px 2px; background: #241d17; border: 2px solid #5a4b3b; overflow: hidden;
+    clip-path: polygon(22% 0, 78% 0, 100% 62%, 80% 100%, 20% 100%, 0 62%); }
+  #shaft .ch { position: absolute; left: 0; right: 0; height: 12.5%; border-top: 1px solid rgba(0,0,0,.4); }
+  #shaft .hang { position: absolute; inset: 0; background: repeating-linear-gradient(45deg, rgba(239,107,91,.3) 0 6px, transparent 6px 12px); }
+  .shaftInfo { flex: 1; font: 12.5px system-ui; color: var(--muted); display: flex; flex-direction: column; justify-content: space-between; }
+  .legend { display: flex; gap: 6px; align-items: center; font: 11px system-ui; }
+  .legend i { width: 12px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  .ctl { margin: 8px 0 2px; }
+  .ctl label { display: flex; justify-content: space-between; font: 600 13px system-ui; }
+  .ctl label span { color: var(--muted); font-weight: 400; }
+  .ctl input[type=range] { width: 100%; accent-color: var(--fire); }
+  .ctl .hintline { font: 11.5px system-ui; color: var(--muted); }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+  #log { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 4; width: min(560px, calc(100% - 600px)); min-width: 300px; display: flex; flex-direction: column-reverse; gap: 4px; pointer-events: none; }
+  .msg { padding: 6px 11px; font: 13px system-ui; animation: tin .3s ease-out; }
+  .msg.bad { border-color: rgba(239,107,91,.7); color: #ffd2cb; }
+  .msg.warn { border-color: rgba(242,184,75,.6); }
+  .msg.good { border-color: rgba(124,207,138,.5); }
+  .msg.tip { border-color: rgba(140,180,255,.5); color: #d6e4ff; }
+  .msg.out { opacity: 0; transition: opacity .8s; }
+  @keyframes tin { from { transform: translateY(8px); opacity: 0; } }
+
+  .modal { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 4, .66); padding: 14px; }
+  .modal > .panel { max-width: 620px; width: 100%; padding: 22px 24px; max-height: 100%; overflow-y: auto; }
+  .modal h1 { margin: 0 0 4px; font-size: 28px; font-weight: 700; }
+  .modal p { color: #e3d8c8; margin: 8px 0; }
+  .modal ul { padding-left: 20px; color: #e3d8c8; margin: 8px 0; }
+  .modal li { margin: 5px 0; }
+  .modal .small { font: 12.5px system-ui; color: var(--muted); }
+  .choices { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .choice { text-align: left; padding: 11px 13px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255,240,220,.06); color: var(--ink); cursor: pointer; font: 14px system-ui; }
+  .choice:hover { border-color: var(--fire); background: rgba(255,138,60,.12); }
+  .choice b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .choice span { color: var(--muted); font-size: 13px; }
+  .stars { font-size: 40px; letter-spacing: 6px; color: var(--warn); text-align: center; }
+  table { width: 100%; border-collapse: collapse; font: 14px system-ui; }
+  td { padding: 5px 4px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  td.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 1000px) {
+    #furnace, #stock { width: 47vw; max-height: 46vh; top: auto; bottom: calc(8px + env(safe-area-inset-bottom)); font-size: 12px; padding: 9px 10px; }
+    #log { bottom: auto; top: 60px; width: calc(100% - 16px); }
+    #top { gap: 8px; padding: 6px 10px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+<div id="top" class="panel ui">
+  <div><div id="date">1 december 1780</div><div id="season">Blåsningen, dag 1 av 90</div></div>
+  <div class="sp">
+    <button class="btn" data-sp="0" title="Paus">❚❚</button>
+    <button class="btn on" data-sp="1">1×</button>
+    <button class="btn" data-sp="2">2×</button>
+    <button class="btn" data-sp="4">4×</button>
+  </div>
+</div>
+
+<div id="furnace" class="panel ui">
+  <h3>Masugnen</h3>
+  <div class="tbig"><b id="temp">1380</b><span>°C i härden</span><span id="trend"></span></div>
+  <div class="tbar"><i id="tmark"></i></div>
+  <div class="tscale"><span>1100 fryser</span><span>bra 1330–1480</span><span>1560 bränner</span></div>
+  <div class="read" id="flame"></div>
+  <div class="read" id="slag"></div>
+
+  <div class="sect">
+    <h3>Schaktet – satserna på väg ner</h3>
+    <div id="shaftWrap">
+      <div id="shaft"></div>
+      <div class="shaftInfo">
+        <div>Överst: satsen som just lagts i.<br>Nederst: den som smälter nu.</div>
+        <div id="shaftTime"></div>
+        <div>
+          <div class="legend"><i style="background:#1c1714"></i>mycket kol (varm)</div>
+          <div class="legend"><i style="background:#8a4a2c"></i>mycket malm (kall)</div>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:6px"><span>Ansats i schaktet</span><b id="ansatsTxt">0 %</b></div>
+    <div class="meter"><i id="ansats" style="background:var(--warn);width:0"></i></div>
+  </div>
+
+  <div class="sect">
+    <h3>Härden</h3>
+    <div class="row"><span>Järn och slagg</span><b id="hearthTxt">0 %</b></div>
+    <div class="meter"><i id="hearth" style="background:var(--fire);width:0"></i><span class="mark" style="left:92%"></span></div>
+    <div class="row" style="font-size:11.5px;color:var(--muted)"><span>röd linje = formorna (blästerhålen)</span></div>
+    <div class="row"><span>Ugnens slitage</span><b id="wearTxt">0 %</b></div>
+  </div>
+
+  <div class="sect">
+    <div class="ctl">
+      <label>Malmsats <span id="ratioTxt">1,10 per lass kol</span></label>
+      <input type="range" id="ratio" min="0.6" max="1.8" step="0.05" value="1.1">
+      <div class="hintline">Mer malm = mer järn, men kallare ugn. Verkan märks först när satsen når härden.</div>
+    </div>
+    <div class="ctl">
+      <label>Bläster <span id="blastTxt">80 %</span></label>
+      <input type="range" id="blast" min="0.2" max="1" step="0.05" value="0.8">
+      <div class="hintline" id="waterTxt">Vattenhjulet går fullt.</div>
+    </div>
+    <div class="btns">
+      <button class="btn fire" id="tapBtn">Tappa härden</button>
+      <button class="btn" id="pokeBtn" disabled>Stöt loss hängningen</button>
+    </div>
+  </div>
+</div>
+
+<div id="stock" class="panel ui">
+  <h3>Bruket</h3>
+  <div class="row"><span>Kassa</span><b id="money">1 500 daler</b></div>
+  <div class="sect">
+    <h3>Lager</h3>
+    <div class="row"><span>Träkol i kolhuset</span><b id="coal">0 lass</b></div>
+    <div class="row" style="font-size:11.5px;color:var(--muted)"><span id="coalDays"></span></div>
+    <div class="row"><span>Rostad malm</span><b id="ore">0 t</b></div>
+    <div class="row"><span>Tackjärn</span><b id="pig">0 skp</b></div>
+    <div class="row" style="font-size:11.5px;color:var(--muted)"><span id="pigQ"></span></div>
+    <div class="row"><span>Stångjärn</span><b id="bar">0 skp</b></div>
+  </div>
+  <div class="sect">
+    <h3>Rostugnen</h3>
+    <div class="btns" style="margin-top:0">
+      <button class="btn on" id="roastN">Normal</button>
+      <button class="btn" id="roastG">Grundlig</button>
+    </div>
+    <div class="row" style="font-size:11.5px;color:var(--muted)"><span id="roastTxt"></span></div>
+  </div>
+  <div class="sect">
+    <h3>Handel</h3>
+    <div id="contract"></div>
+    <div class="row"><span>Järnvågen i Stockholm</span><b id="price">24 daler/skp</b></div>
+    <div class="btns">
+      <button class="btn" id="sellBtn">Sälj 50 skp stångjärn</button>
+      <button class="btn" id="buyCoalBtn">Köp 40 lass kol</button>
+    </div>
+  </div>
+</div>
+
+<div id="log" class="ui"></div>
+
+<div id="intro" class="modal">
+  <div class="panel">
+    <h1>Bruket</h1>
+    <p class="small">Känslotest · en vintersäsong vid masugnen, Bergslagen 1780</p>
+    <p>Du har tagit över ett bruk. Kolarna har kolat hela hösten, och nu ska masugnen <b>blåsa</b>, alltså gå dygnet runt i 90 dagar så länge kolet räcker. Tackjärnet blir stångjärn i hammarsmedjan och säljs.</p>
+    <ul>
+      <li><b>Malmsatsen</b> bestämmer hur mycket malm som läggs på varje lass kol. Mer malm ger mer järn men kyler ugnen. Satserna tar nästan en dag på sig att sjunka ner till härden, så <b>du måste tänka i förväg</b>.</li>
+      <li><b>Håll härden mellan 1 330 och 1 480 °C.</b> Faller den under 1 200 fryser härden, och då står allt still i många dagar. För varmt sliter ut ugnen.</li>
+      <li><b>Tappa härden</b> innan järn och slagg når formorna.</li>
+      <li>Dålig malm bygger <b>ansats</b> i schaktet, och då kan beskickningen <b>hänga sig</b> och sedan rasa ner kall.</li>
+      <li>Kolet ska räcka hela säsongen. Ån kan frysa, och då tappar vattenhjulet och blästern kraft.</li>
+    </ul>
+    <p class="small">Siffrorna är förenklade, men händelserna bygger på hur verkliga träkolsmasugnar fungerade. Dra med musen för att se dig omkring på bruket.</p>
+    <div class="choices" id="introChoices"></div>
+  </div>
+</div>
+
+<div id="event" class="modal hidden">
+  <div class="panel">
+    <h1 id="evTitle"></h1>
+    <p id="evText"></p>
+    <div class="choices" id="evChoices"></div>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
