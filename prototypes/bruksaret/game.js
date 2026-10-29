@@ -7,14 +7,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const CFG = {
   secDayOff: 1.6, secDayOn: 4.5, yearDays: 365,
   // masugn
-  slots: 8, descent: 1.1, orePerCharge: 0.6, skpPerTon: 7.35, hearthPerCharge: 4.2, tapTime: 0.15,
-  freezeT: 1200, freezeHold: 0.45, hardFreezeT: 1140, freezeRepairDays: 8, freezeRepairCost: 350,
+  slots: 8, descent: 1.6, orePerCharge: 0.6, skpPerTon: 7.35, hearthPerCharge: 2.9, tapTime: 0.15,
+  freezeT: 1180, freezeHold: 0.9, hardFreezeT: 1110, freezeRepairDays: 8, freezeRepairCost: 350,
   wearT: 1500, wearBase: 0.32, relineDays: 15, relineCost: 600,
   mineOre: 3.2, roast: { rate: 6, q: 0.0 },
   // smedja
-  hammerCap: 14, coalPerSkp: 0.09, barYield: 0.8,
+  hammerCap: 16, coalPerSkp: 0.09, barYield: 0.8,
   // ekonomi
-  wageBase: 12, wageFurnace: 25, wageSmith: 12, wageKolare: 2.5, horseCost: 1.5,
+  wageBase: 8, wageFurnace: 18, wageSmith: 8, wageKolare: 2, horseCost: 1.5,
   coalBuy: 6, pigPrice: 8,
   // kolning
   milaBuild: 3, milaBurn: 16, milaCool: 3, milaYield: 34,
@@ -34,7 +34,7 @@ const S = {
   ansats: 4, wear: 72, hanging: 0, frozen: 0, coldTime: 0, relining: 0,
   // material
   coal: 60, rawOre: 20, ore: 80, oreQ: 0.55, oreDrift: 0, mineQBonus: 0,
-  pig: 260, pigQ: 0.95, bar: 40, money: 2500,
+  pig: 260, pigQ: 0.95, bar: 40, money: 4000,
   // kolning
   kolare: 2, horses: 2, milor: [], kolWageBonus: 0,
   // smedja
@@ -43,7 +43,7 @@ const S = {
   water: 0.75, wind: 0.3, snow: false, snowStart: 172 + Math.random() * 14, snowEnd: 296 + Math.random() * 12,
   frostLeft: 0, iceCut: false, thawLeft: 0, droughtLeft: 0, damBonus: 0, floodLeft: 0, stormLeft: 0, extraWatch: false, badOreLeft: 0,
   price: 16, contracts: [], fired: new Set(), stats: { produced: 0, freezes: 0, hangs: 0, burnedMilor: 0, milorDone: 0, bars: 0 },
-  hint: {}, open: null,
+  hint: {}, open: null, autoTap: true,
 };
 S.start = { money: S.money, coal: S.coal, pig: S.pig, bar: S.bar };
 const MONTH_WATER = [0.8, 0.75, 0.85, 1.15, 1.0, 0.75, 0.55, 0.5, 0.75, 0.95, 1.0, 0.9];   // jan..dec
@@ -263,7 +263,7 @@ function waterShare() {
   if (!fNeeds) return { F: 0, S: Math.min(1, w) };
   if (!sNeeds) return { F: Math.min(1, w), S: 0 };
   if (w >= 1.2) return { F: 1, S: 1 };
-  const first = Math.min(1, w), second = clamp(w - 0.25, 0.2, 1);
+  const first = Math.min(1, w), second = clamp(w - 0.15, 0.25, 1);
   return S.prio === 'F' ? { F: first, S: second } : { F: second, S: first };
 }
 function weatherStep(dd) {
@@ -285,16 +285,46 @@ function weatherStep(dd) {
 
 // ================================================================ masugnen (från prototyp 4)
 function meltingMix() { const s = [...S.shaft].sort((a, b) => b.pos - a.pos); const a = s[0], b = s[1] || a; return { r: a.r * 0.65 + b.r * 0.35, q: a.q * 0.65 + b.q * 0.35 }; }
+function baseT(r, q, bl) {
+  let t = 1372 + 300 * (1.1 - r) + 140 * (bl - 0.75) - 900 * Math.max(0, 0.55 - q) + 300 * Math.max(0, q - 0.55);
+  if (S.frostLeft > 0) t -= 25;
+  if (S.thawLeft > 0) t -= 30;
+  return t;
+}
 function targetT(bl) {
   if (S.frozen > 0) return 900;
   if (S.shaft.length === 0) return 1000;
   const m = meltingMix();
-  let t = 1372 + 300 * (1.1 - m.r) + 140 * (bl - 0.75) - 900 * Math.max(0, 0.55 - m.q) + 300 * Math.max(0, m.q - 0.55);
-  if (S.hearth > 92) t -= 260 * (S.hearth - 92) / 8;
+  let t = baseT(m.r, m.q, bl);
+  if (S.hearth > 92) t -= 90 * Math.min(1.5, (S.hearth - 92) / 8);
   if (S.hanging) t -= 60;
-  if (S.frostLeft > 0) t -= 25;
-  if (S.thawLeft > 0) t -= 30;
   return t;
+}
+// prognos: vad temperaturen blir när satserna som ligger i schaktet har nått ner (≈ ett dygn)
+function forecastT() {
+  if (!S.fOn || S.frozen > 0 || !S.shaft.length) return null;
+  const bl = S.blEff || Math.min(S.blast, waterShare().F);
+  const s = [...S.shaft].sort((a, b) => b.pos - a.pos).slice(0, 5);
+  const r = s.reduce((a, c) => a + c.r, 0) / s.length, q = s.reduce((a, c) => a + c.q, 0) / s.length;
+  return baseT(r, q, bl) - (S.hanging ? 40 : 0);
+}
+// masmästarens råd: vilken malmsats som ger ≈ 1 405 °C med nuvarande bläster och malm
+function recRatio() {
+  const bl = S.blEff || Math.min(S.blast, waterShare().F);
+  const t0 = baseT(1.1, S.oreQ, bl);
+  return clamp(Math.round((1.1 + (t0 - 1405) / 300) * 20) / 20, 0.7, 1.5);
+}
+function advice() {
+  if (!S.fOn) return '';
+  if (S.frozen > 0) return 'Härden bryts upp. Starta sedan med mycket kol (låg malmsats).';
+  if (S.hanging) return 'Beskickningen hänger! Sänk blästern till ungefär 40 % så blir raset mindre, eller tryck "Stöt loss".';
+  if (S.hearth > 80) return 'Härden är nästan full – tappa nu!';
+  const f = forecastT(), rr = recRatio(), T = S.T;
+  if (T < 1260) return `Ugnen är farligt kall! Höj blästern direkt (det verkar på en gång) och sänk malmsatsen till ${rr.toFixed(2).replace('.', ',')} eller lägre.`;
+  if (f !== null && f < 1320) return `Satserna i schaktet gör ugnen för kall om ett dygn. Sänk malmsatsen till ≈ ${rr.toFixed(2).replace('.', ',')} och höj blästern lite.`;
+  if (f !== null && f > 1490) return `Ugnen kommer gå för varmt (slösar kol, sliter fodret). Höj malmsatsen till ≈ ${rr.toFixed(2).replace('.', ',')}.`;
+  if (S.ansats > 40) return 'Mycket ansats i schaktet – kör lite varmare (lägre malmsats) en tid så smälter den bort.';
+  return `Ugnen går bra. Lagom malmsats nu: ≈ ${rr.toFixed(2).replace('.', ',')}.`;
 }
 function addCharge() {
   const oreNeed = CFG.orePerCharge * S.ratio;
@@ -311,14 +341,17 @@ function meltCharge(c) {
 function slip(controlled, bl) {
   const n = Math.min(S.shaft.length, 2); S.shaft.sort((a, b) => b.pos - a.pos);
   const dropped = S.shaft.splice(0, n);
-  const drop = (controlled ? 0.5 : 1) * (40 + 130 * bl) * (1 + S.ansats / 110) * (dropped.reduce((a, c) => a + c.r, 0) / (1.1 * Math.max(1, n)));
-  dropped.forEach(meltCharge); S.T -= drop; S.hanging = 0; S.stats.hangs++;
+  const drop = (controlled ? 0.5 : 1) * (30 + 90 * bl) * (1 + S.ansats / 150) * (dropped.reduce((a, c) => a + c.r, 0) / (1.1 * Math.max(1, n)));
+  dropped.forEach(meltCharge); S.T -= drop; S.hanging = 0; S.stats.hangs++; S.lastSlip = S.day;
   log(`Hängningen släppte – beskickningen rasade ner kall! Härden föll ${Math.round(drop)} °C.`, controlled ? 'warn' : 'bad');
 }
 function freeze() {
   S.frozen = CFG.freezeRepairDays; S.stats.freezes++; S.money -= CFG.freezeRepairCost;
   S.hearth = 0; S.hearthIron = 0; S.hearthQ = 0; S.tapping = 0; S.hanging = 0;
   log(`HÄRDEN HAR FRUSIT! ${CFG.freezeRepairDays} dagars stillestånd och ${CFG.freezeRepairCost} daler för att bryta upp den.`, 'bad');
+  const why = S.ratio > recRatio() + 0.08 ? `Malmsatsen var ${S.ratio.toFixed(2).replace('.', ',')} – för mycket malm för den här malmen och blästern (lagom hade varit ≈ ${recRatio().toFixed(2).replace('.', ',')}).`
+    : (S.blEff || 0) < 0.6 ? 'Blästern var för svag – ugnen fick för lite luft för att hålla värmen.' : S.stats.hangs && S.lastSlip && S.day - S.lastSlip < 1.5 ? 'En hängning rasade ner kall beskickning i härden.' : 'Temperaturen låg under 1 180 °C för länge.';
+  setTimeout(() => $('event').classList.contains('hidden') && openEvent('Härden frös', `<p>${why}</p><p>Arbetarna bryter nu upp den stelnade järnklumpen – 8 dagar och ${CFG.freezeRepairCost} daler. Nästa gång: håll koll på <b>prognosen</b> och <b>masmästarens råd</b> i masugnspanelen, och höj blästern så fort det blir kallt.</p>`, [{ t: 'Uppfattat', d: '', f: () => {} }]), 50);
 }
 function lightFurnace() {
   if (S.fOn || S.relining > 0) return;
@@ -364,7 +397,12 @@ function furnaceStep(dd) {
   while (g++ < 3 && (S.shaft.length === 0 || Math.min(...S.shaft.map(c => c.pos)) >= 1 / CFG.slots)) { if (!addCharge()) break; }
   if (S.coal < 1 && S.shaft.length === 0) { blowDown('Kolet tog slut – masugnen fick blåsas ner.'); return; }
   if (S.coal < 1) hint('nocoal', 'Kolhuset är tomt! Ugnen svalnar när de sista satserna smält.');
-  S.T += (targetT(bl) - S.T) * Math.min(1, dd * 1.9);
+  S.T += (targetT(bl) - S.T) * Math.min(1, dd * 3.2);
+  if (S.T < 1265 && !S.warnedCold) {
+    S.warnedCold = true;
+    openEvent('Masugnen håller på att frysa!', `<p>Härden är nere i ${Math.round(S.T)} °C. Under ungefär 1 180 °C stelnar järnet, och då måste härden brytas upp – 8 dagars stillestånd.</p><p><b>Gör så här:</b></p><ul><li><b>Höj blästern</b> – det värmer ugnen direkt.</li><li><b>Sänk malmsatsen</b> (mer kol per sats) till ungefär ${recRatio().toFixed(2).replace('.', ',')}. Det verkar när satserna når härden, om ungefär ett halvt dygn.</li><li>Håll ett öga på <b>prognosen</b> i masugnspanelen – den visar vad som är på väg.</li></ul>`, [{ t: 'Uppfattat', d: 'Spelet fortsätter.', f: () => { if (S.open !== 'F') openStation('F'); } }]);
+  }
+  if (S.T < 1250 && S.day - (S.coldLog || -9) > 2) { S.coldLog = S.day; log(`⚠ Härden är kall (${Math.round(S.T)} °C) – höj blästern och sänk malmsatsen!`, 'bad'); }
   S.ansats = clamp(S.ansats - Math.max(0, S.T - 1440) * 0.03 * dd - 0.4 * dd, 0, 100);
   S.wear += CFG.wearBase * dd + (S.T > CFG.wearT ? (S.T - CFG.wearT) * 0.035 * dd : 0) + (S.hearth > 100 ? 2.5 * dd : 0);
   if (S.tapping > 0) {
@@ -376,6 +414,9 @@ function furnaceStep(dd) {
       log(`Tappat ${Math.round(iron)} skp ${q > 0.95 ? 'grått' : q > 0.85 ? 'halvgrått' : 'vitt'} tackjärn.`, q > 0.95 ? 'good' : 'warn');
     }
   }
+  if (S.autoTap && S.hearth >= 85 && S.tapping <= 0) S.tapping = CFG.tapTime;
+  if (S.hearth > 85 && !S.autoTap && S.day - (S.fullLog || -9) > 1) { S.fullLog = S.day; log('⚠ Härden är nästan full – tappa nu! Annars når slaggen formorna och ugnen kyls ner.', 'bad'); }
+  S.hearth = Math.min(S.hearth, 106);
   if (S.T < CFG.freezeT) S.coldTime += dd; else S.coldTime = Math.max(0, S.coldTime - dd);
   if (S.T < CFG.hardFreezeT || S.coldTime > CFG.freezeHold) freeze();
   if (S.wear >= 100) blowDown('Infodringen är utbränd – masugnen måste blåsas ner!');
@@ -455,7 +496,7 @@ function smithStep(dd) {
 
 // ================================================================ kontrakt & händelser
 const CONTRACT_OFFERS = [
-  { day: 2, from: 'Handelshuset Lindegren & Son, Stockholm', amount: 450, due: 228, price: 21, advance: 2000 },
+  { day: 2, from: 'Handelshuset Lindegren & Son, Stockholm', amount: 450, due: 228, price: 21, advance: 2500 },
   { day: 138, from: 'En holländsk skeppare i Gävle', amount: 400, due: 304, price: 22, advance: 0 },
   { day: 248, from: 'Kronans faktori i Stockholm', amount: 250, due: 350, price: 23, advance: 0 },
 ];
@@ -535,8 +576,10 @@ function step(dd) {
   weatherStep(dd); furnaceStep(dd); kolStep(dd); smithStep(dd);
   // tips
   if (S.day > 20 && S.wear >= 60 && S.relining <= 0 && !S.fOn) hint('reline', 'Masugnens infodring är sliten. Mura om den under sommaren, så att den är redo till vintern.');
+  if (S.money < 1200 && S.bar > 60) hint('sell', 'Kassan sjunker. Sälj stångjärn på järnvågen (panelen till höger) – spara bara det du behöver till kontrakten.');
   if (S.day > 6 && S.milor.length === 0) hint('kol', 'Kolhuset är nästan tomt. Res milor ute i skogen nu, så att det finns kol till vinterns blåsning.');
-  if (S.day > 120 && !S.fOn && S.coal > 250 && S.wear < 60) hint('lightnow', 'Det finns kol nog för att tända masugnen. Många bruk tände när snön kom och slädföret bar.');
+  if (S.day > 120 && !S.fOn && S.coal > 150 && S.wear < 60) hint('lightnow', 'Det finns kol nog för att tända masugnen. Den drar ungefär 10 lass kol per dygn – fortsätt kola och köra in kol medan den blåser. Många bruk tände när snön kom och slädföret bar.');
+  if (S.day > 200 && !S.fOn && S.wear < 60 && S.coal >= 40) hint('lightlate', 'Det är mitt i vintern och masugnen står kall! Utan tackjärn blir det inget stångjärn till kontrakten. Tänd den nu.');
 }
 
 // ================================================================ årets slut
@@ -547,7 +590,7 @@ function endYear() {
   const val = s => s.money + s.coal * 4 + s.pig * CFG.pigPrice + s.bar * 16;
   const profit = val(S) - val(S.start);
   const failed = S.contracts.filter(c => c.delivered < c.amount).length;
-  let st = profit >= 14000 ? 3 : profit >= 8000 ? 2 : profit > 0 ? 1 : 0;
+  let st = profit >= 23000 ? 3 : profit >= 14000 ? 2 : profit > 0 ? 1 : 0;
   if (failed) st = Math.min(st, 1);
   $('event').classList.add('hidden');
   setTimeout(() => {
@@ -594,6 +637,8 @@ document.querySelectorAll('.hd[data-st]').forEach(h => h.onclick = () => openSta
 $('ratio').oninput = e => S.ratio = +e.target.value;
 $('blast').oninput = e => S.blast = +e.target.value;
 $('tapBtn').onclick = tap; $('pokeBtn').onclick = poke;
+$('autoTap').onchange = e => { S.autoTap = e.target.checked; };
+$('followBtn').onclick = () => { S.ratio = recRatio(); $('ratio').value = S.ratio; };
 $('blowDownBtn').onclick = () => { if (confirm('Blåsa ner masugnen? Den måste tändas igen, och det går åt kol.')) blowDown(); };
 $('lightBtn').onclick = lightFurnace;
 $('relineBtn').onclick = () => { if (S.fOn || S.relining > 0) return; S.relining = CFG.relineDays; S.money -= CFG.relineCost; log('Murarna börjar mura om masugnens schakt.'); };
@@ -651,6 +696,11 @@ function updateUI() {
     const tr = T - S.Tprev; $('trend').textContent = S.frozen > 0 ? 'frusen' : `${tr > 1.5 ? '▲' : tr < -1.5 ? '▼' : '●'} ${tempWord(T)}`;
     $('trend').style.color = T < 1300 || T > 1500 ? 'var(--bad)' : T < 1330 || T > 1480 ? 'var(--warn)' : 'var(--ok)';
     $('tmark').style.left = `${clamp((T - 1100) / 460, 0, 1) * 100}%`;
+    const fc = forecastT();
+    $('fcast').textContent = fc === null ? '—' : `≈ ${Math.round(fc)} °C ${fc < S.T - 15 ? '▼' : fc > S.T + 15 ? '▲' : '●'}`;
+    $('fcast').style.color = fc === null ? '' : fc < 1300 || fc > 1500 ? 'var(--bad)' : fc < 1330 || fc > 1480 ? 'var(--warn)' : 'var(--ok)';
+    const adv = advice(); if ($('advice').textContent !== adv) $('advice').textContent = adv;
+    $('followBtn').textContent = `Sätt malmsats ${recRatio().toFixed(2).replace('.', ',')}`;
     $('flame').textContent = S.frozen > 0 ? 'Härden bryts upp.' : `Gichtflamman ${T < 1260 ? 'mörkröd och osande' : T < 1330 ? 'röd och slö' : T < 1480 ? 'livlig, gulröd' : 'vitgul och skarp'} · slaggen ${T < 1300 ? 'seg' : T < 1480 ? 'lättflytande' : 'tunn'}`;
     let html = S.shaft.map(c => { const k = clamp((c.r - 0.6) / 1.2, 0, 1); return `<div class="ch" style="top:${clamp(c.pos, 0, 0.95) * 100}%;background:rgb(${28 + k * 112},${23 + k * 51},${20 + k * 24})"></div>`; }).join('');
     if (S.hanging) html += '<div class="hang"></div>'; $('shaft').innerHTML = html;
@@ -690,7 +740,7 @@ function updateUI() {
   $('smithTxt').textContent = S.broken > 0 ? (S.repairing ? 'Smeden byter hammarskaftet…' : 'Hammarskaftet har spruckit!') : `Vatten till smedjan: ${Math.round(ws * 100)} %. Tackjärnet är ${S.pigQ > 0.95 ? 'grått' : S.pigQ > 0.85 ? 'halvgrått' : 'vitt'} – ${Math.round(CFG.barYield * S.pigQ * 100)} % blir stångjärn.`;
   $('repairBtn').classList.toggle('hidden', !(S.broken > 0 && !S.repairing));
   // höger
-  $('money').textContent = `${fmtN(S.money)} daler`; $('money').style.color = S.money < 0 ? 'var(--bad)' : '';
+  $('money').textContent = S.money < 0 ? `${fmtN(S.money)} daler (lån)` : `${fmtN(S.money)} daler`; $('money').style.color = S.money < 0 ? 'var(--bad)' : '';
   const daily = CFG.wageBase + CFG.wageSmith + (S.fOn ? CFG.wageFurnace : 0) + S.kolare * (CFG.wageKolare + S.kolWageBonus) + S.horses * CFG.horseCost;
   $('costTxt').textContent = `Löner och foder: ${fmtN(daily)} daler/dag`;
   $('coal').textContent = `${fmtN(S.coal)} lass`;
@@ -803,4 +853,4 @@ function frame() {
   uiT += dt; if (uiT > 0.12) { uiT = 0; updateUI(); }
 }
 applySeason(); updateUI(); frame();
-window.__y = { S, CFG, LOTS, tap, poke, tata, startMila, lightFurnace, blowDown, openStation };
+window.__y = { step, S, CFG, LOTS, tap, poke, tata, startMila, lightFurnace, blowDown, openStation, recRatio, advice, forecastT };

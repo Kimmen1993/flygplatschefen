@@ -147,6 +147,8 @@
         <div class="tbar"><i id="tmark"></i></div>
         <div class="tscale"><span>1100 fryser</span><span>bra 1330–1480</span><span>1560</span></div>
         <div class="read" id="flame"></div>
+        <div class="row" style="margin-top:6px"><span>Prognos om ≈ ett dygn</span><b id="fcast">—</b></div>
+        <div style="margin:6px 0;padding:7px 9px;border-radius:8px;background:rgba(140,180,255,.1);border:1px solid rgba(140,180,255,.3)"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Masmästaren säger</div><div id="advice" style="font-size:13px;color:#dfe8ff"></div><div class="btns" style="margin-top:5px"><button class="btn sm" id="followBtn">Sätt malmsats</button></div></div>
         <div class="sect">
           <div id="shaftWrap">
             <div id="shaft"></div>
@@ -167,6 +169,7 @@
         <div class="ctl"><label>Bläster <span id="blastTxt"></span></label><input type="range" id="blast" min="0.2" max="1" step="0.05" value="0.8"></div>
         <div class="btns">
           <button class="btn fire" id="tapBtn">Tappa härden</button>
+          <label class="small" style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="autoTap" checked>Masmästaren tappar själv</label>
           <button class="btn" id="pokeBtn" disabled>Stöt loss</button>
           <button class="btn" id="blowDownBtn">Blås ner</button>
         </div>

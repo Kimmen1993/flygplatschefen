@@ -9,7 +9,12 @@
 - Slarvig (tätar sällan, sköter ugnen dåligt): 29 av 38 milor brann upp, 0/3 kontrakt, −11 000 daler.
 - Stjärnor: 3★ ≥ 14 000, 2★ ≥ 8 000, 1★ > 0. Den skickliga testspelaren reagerar perfekt, vilket ingen människa gör.
 
-**Status:** pågår (väntar på speltest).
+**Speltest 1 (Kimm):** "omöjligt att tjäna pengar", "för segt att reagera", "den dör bara utan förvarning", "man fattar inte vad man ska göra".
+- Orsak: härden blev full, och slaggen över formorna kylde ugnen till frysning på några timmar, utan tydlig varning. Dessutom kom pengarna först i januari.
+- Åtgärder: prognos för temperaturen om ett dygn, masmästarens råd med knappen "Sätt malmsats", masmästaren tappar själv (kan stängas av), snabbare respons (satserna sjunker fortare och blästern verkar direkt), varning och paus första gången det blir kallt, förklaring när härden fryser, mildare ras, lägre löner, 4 000 daler från start och tips om att sälja.
+- Nytt test: "nybörjaren" som bara följer rådet får +20 300 daler, 0 frysningar och 3/3 kontrakt. Den skickliga får +18 700. Stjärngränserna höjdes till 3★ ≥ 23 000 och 2★ ≥ 14 000.
+
+**Status:** pågår (väntar på speltest 2).
 
 **Fynd:**
 - (fylls i efter speltest)
