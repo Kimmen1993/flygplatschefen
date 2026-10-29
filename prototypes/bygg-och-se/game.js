@@ -6,9 +6,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const CELL = 12, COLS = 26, ROWS = 14;
 const RW_ROW = 1, RW_C0 = 2, RW_C1 = 23, RW_N = RW_C1 - RW_C0 + 1;   // banan, index 0 = östra änden (där planen sätter ner)
 const TERM_ROW = 13, TERM_C0 = 5, TERM_C1 = 20, GATE_ROW = 12;
-const COST = { taxi: 50, road: 20, gate: 400, biggate: 700, depot: 300 };
+const COST = { taxi: 30, road: 10, gate: 350, biggate: 600, depot: 250 };
 const CFG = {
-  startMoney: 3000,
+  startMoney: 6000,
   taxiSpeed: 9, truckSpeed: 11,
   fuelTime: 5, boardTime: 9,
   minRoll: { s: 6, b: 9 },        // rutor efter sättning innan planet kan svänga av
@@ -406,7 +406,7 @@ const S = {
   planes: [], depots: [], gates: [],
   schedule: [], spawnIdx: 0, dayDeps: 0, dayOnTime: 0, dayDiverts: 0, dayEarned: 0, dayFlights: 0,
   totalDeps: 0, mods: { extraFlights: 0, bigShare: 0, payMult: 1, rush: false, boardMult: 1, taxiDiscount: 1 },
-  rw: null, landCheck: 0, fuelCheck: 0, toldNoGate: 0,
+  rw: null, landCheck: 0, fuelCheck: 0, toldNoGate: 0, epoch: 0,
 };
 let flightNo = 100 + Math.floor(Math.random() * 300);
 
@@ -432,13 +432,13 @@ function build(tool, k) {
   if (canBuild(tool, k)) return false;
   const t = G[k].type;
   if (tool === 'erase') {
-    const refund = Math.round((t === 'taxi' ? cost('taxi') : COST[t]) * 0.5);
+    const refund = refundFor(k);
     if (isGate(t)) S.gates.splice(S.gates.indexOf(G[k].ref), 1);
     if (t === 'depot') { const d = G[k].ref; d.trucks.forEach(tr => scene.remove(tr.group)); S.depots.splice(S.depots.indexOf(d), 1); }
-    G[k].type = null; G[k].ref = null; S.money += refund;
+    G[k].type = null; G[k].ref = null; G[k].paid = 0; S.money += refund;
   } else {
     S.money -= cost(tool);
-    G[k].type = tool;
+    G[k].type = tool; G[k].paid = cost(tool); G[k].epoch = S.epoch;
     if (isGate(tool)) { G[k].ref = { key: k, big: tool === 'biggate', res: null, no: 0 }; S.gates.push(G[k].ref); }
     if (tool === 'depot') {
       const d = { key: k, trucks: [] }; G[k].ref = d; S.depots.push(d);
@@ -447,6 +447,11 @@ function build(tool, k) {
   }
   netV++; rebuild(); updateChecklist();
   return true;
+}
+// allt du bygger innan du öppnar kan rivas gratis; efter det får du halva tillbaka
+function refundFor(k) {
+  const c = G[k]; if (!c.paid) return 0;
+  return S.phase !== 'RUN' && c.epoch === S.epoch ? c.paid : Math.round(c.paid * 0.5);
 }
 function addTruck(d, i) {
   const tr = { ...buildTruck(), depot: d, cell: d.key, pos: cellPos(d.key).add(new THREE.Vector3(-3 + i * 2.2, 0, -3 + i * 2.2)), heading: Math.PI / 2, path: [], state: 'IDLE', plane: null, block: 0, kind: 'truck' };
@@ -928,7 +933,7 @@ cv.addEventListener('pointermove', e => {
   ghost.material.color.set(why ? 0xff5a5a : tool === 'erase' ? 0xffcf6b : 0x38d39f);
   if (e.pointerType === 'mouse') {
     tip.classList.remove('hidden'); tip.classList.toggle('bad', !!why);
-    tip.textContent = why || (tool === 'erase' ? `Riv (+${fmtKr(Math.round((G[k].type === 'taxi' ? cost('taxi') : COST[G[k].type]) * 0.5))})` : `${NAMES[tool]} · ${fmtKr(cost(tool))}`);
+    tip.textContent = why || (tool === 'erase' ? `Riv (+${fmtKr(refundFor(k))})` : `${NAMES[tool]} · ${fmtKr(cost(tool))}`);
     tip.style.left = `${e.clientX}px`; tip.style.top = `${e.clientY}px`;
   }
   if (painting && k !== lastCell && lastCell >= 0) {
@@ -944,12 +949,13 @@ cv.addEventListener('pointermove', e => {
 function paint(k) { if (k >= 0 && !canBuild(tool, k)) { build(tool, k); paintedAny = true; } }
 
 // knappar
+$('resetBtn').onclick = () => { if (confirm('Riva allt och börja om från början?')) location.reload(); };
 $('startBtn').onclick = () => { $('intro').classList.add('hidden'); S.phase = 'BUILD'; updateChecklist(); };
 $('openBtn').onclick = () => {
   const a = analyse();
   if (!(a.exits && a.gateIn && a.gateOut)) { toast('Bygg klart först: planen behöver väg från banan till en gate och tillbaka.', 'warn'); return; }
   if (!a.fuel) toast('Varning: ingen tankbil når gaterna – planen kommer att fastna.', 'warn');
-  planDay(); S.phase = 'RUN';
+  planDay(); S.phase = 'RUN'; S.epoch++; $('resetBtn').classList.add('hidden');
   $('openBtn').classList.add('hidden'); $('speeds').classList.remove('hidden');
   updateChecklist(); toast(`Dag ${S.day}: ${S.dayFlights} plan väntas. Flygplatsen är öppen!`, 'good');
 };

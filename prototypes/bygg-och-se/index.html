@@ -115,6 +115,7 @@
     <button class="btn" data-sp="2">2×</button>
     <button class="btn" data-sp="4">4×</button>
   </div>
+  <button class="btn" id="resetBtn" title="Riv allt och börja om">↺ Börja om</button>
   <button class="btn go" id="openBtn">Öppna flygplatsen ▶</button>
 </div>
 
@@ -130,7 +131,7 @@
   <button class="tool" data-tool="gate"><span class="ic">🛬</span><span class="nm">Gate</span><span class="pr" data-cost="gate"></span></button>
   <button class="tool locked" data-tool="biggate"><span class="ic">🛫</span><span class="nm">Storgate</span><span class="pr" data-cost="biggate"></span></button>
   <button class="tool" data-tool="depot"><span class="ic">⛽</span><span class="nm">Tankdepå</span><span class="pr" data-cost="depot"></span></button>
-  <button class="tool" data-tool="erase"><span class="ic">🧹</span><span class="nm">Riv</span><span class="pr">50% tillbaka</span></button>
+  <button class="tool" data-tool="erase"><span class="ic">🧹</span><span class="nm">Riv</span><span class="pr">gratis före start</span></button>
 </div>
 
 <div id="intro" class="modal">
@@ -143,6 +144,7 @@
       <li><b>Bygg en tankdepå.</b> Tankbilarna kör på taxibanor och servicevägar, men de får vänta när plan är i vägen.</li>
       <li>Tryck <b>Öppna flygplatsen</b> och se om trafiken flyter. Du kan bygga om när som helst, även medan planen rullar.</li>
     </ol>
+    <p>Du har 6 000 kr. En enkel start (en taxibana upp till en gate och en tankdepå) kostar runt 1 000 kr. <b>Allt du river innan du öppnar får du tillbaka helt</b>, så prova dig fram!</p>
     <p>Tänk på det här: planen behöver en <b>avfart en bit in på banan</b> efter landning, och för att starta behöver de <b>gott om bana framför sig</b>. Två plan kan inte mötas på en smal taxibana. Varje dag kommer fler plan, och efter varje dag väljer du ett nytt erbjudande.</p>
     <p class="small">Vrid vyn: välj ✋ Titta och dra, eller högerdra och använd två fingrar. Zooma: scrolla eller nyp.</p>
     <p style="text-align:center;margin-top:16px"><button class="btn big" id="startBtn">Börja bygga</button></p>
