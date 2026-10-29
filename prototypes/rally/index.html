@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Rallystallet – känslotest</title>
+<style>
+  :root {
+    --panel: rgba(12, 16, 22, .8);
+    --line: rgba(255, 255, 255, .14);
+    --ink: #eef2f6;
+    --muted: #9aa6b4;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --accent: #f97316;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f14; color: var(--ink);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; touch-action: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 12px; }
+  .hidden { display: none !important; }
+  .btn { background: rgba(255,255,255,.1); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: rgba(255,255,255,.18); }
+  .btn.big { background: var(--accent); color: #1a0a00; border: 0; padding: 12px 24px; font-size: 17px; border-radius: 10px; }
+  .btn.big:hover { filter: brightness(1.08); }
+
+  /* HUD */
+  #hudL { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 10px; padding: 8px 12px; z-index: 4; min-width: 150px; }
+  #hudL .ss { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  #hudL .tm { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #hudL .pen { font-size: 12px; color: var(--warn); }
+  #progress { height: 5px; background: rgba(255,255,255,.12); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  #progress i { display: block; height: 100%; width: 0; background: var(--accent); }
+  #hudR { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 10px; z-index: 4; display: flex; gap: 6px; }
+  #note { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 4; display: flex; gap: 8px; }
+  .pn { padding: 6px 14px; text-align: center; min-width: 92px; }
+  .pn .ar { font-size: 30px; line-height: 1; font-weight: 800; }
+  .pn .tx { font-size: 13px; font-weight: 700; }
+  .pn.next { opacity: .55; transform: scale(.85); }
+  .pn.hop .ar { color: var(--warn); }
+  #speedo { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 4; padding: 6px 16px; display: flex; align-items: baseline; gap: 8px; }
+  #speedo b { font-size: 30px; font-variant-numeric: tabular-nums; }
+  #speedo span { color: var(--muted); font-size: 13px; }
+  #dmg { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom)); right: 10px; z-index: 4; padding: 8px 10px; display: grid; grid-template-columns: auto 60px; gap: 3px 8px; font-size: 12px; align-items: center; }
+  #dmg .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+  #dmg .bar i { display: block; height: 100%; }
+  #msg { position: fixed; top: 38%; left: 50%; transform: translate(-50%, -50%); z-index: 6; font-size: 64px; font-weight: 900; text-shadow: 0 4px 24px rgba(0,0,0,.6); pointer-events: none; }
+  #hint { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 4; padding: 6px 12px; font-size: 13px; color: var(--muted); }
+
+  /* touch */
+  #touch { position: fixed; inset: auto 0 0 0; z-index: 5; display: none; justify-content: space-between; padding: 0 12px calc(12px + env(safe-area-inset-bottom)); pointer-events: none; }
+  #touch .grp { display: flex; gap: 10px; pointer-events: auto; align-items: flex-end; }
+  .tb { width: 74px; height: 74px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.25); color: #fff; font-size: 28px; display: flex; align-items: center; justify-content: center; }
+  .tb.on { background: rgba(249,115,22,.5); }
+  .tb.sm { width: 56px; height: 56px; font-size: 13px; font-weight: 700; }
+  body.touch #touch { display: flex; }
+  body.touch #speedo { bottom: auto; top: calc(92px + env(safe-area-inset-top)); left: 10px; transform: none; }
+  body.touch #dmg { bottom: auto; top: calc(92px + env(safe-area-inset-top)); }
+  body.touch #hint { display: none; }
+
+  /* modaler */
+  .modal { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 12, .62); padding: 14px; }
+  .modal > .panel { max-width: 680px; width: 100%; padding: 20px 22px; max-height: 100%; overflow-y: auto; }
+  .modal h1 { margin: 0 0 4px; font-size: 26px; }
+  .modal h2 { margin: 14px 0 6px; font-size: 16px; }
+  .modal p { color: #c9d2dc; margin: 8px 0; }
+  .modal .small { font-size: 13px; color: var(--muted); }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; color: #c9d2dc; margin: 10px 0; }
+  kbd { background: rgba(255,255,255,.12); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font: 600 13px system-ui; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  td, th { padding: 5px 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.07); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  tr.me td { color: var(--accent); font-weight: 800; }
+  td.r, th.r { text-align: right; }
+  .weather { padding: 10px 12px; border-radius: 10px; background: rgba(96,165,250,.12); border: 1px solid rgba(96,165,250,.35); margin: 8px 0; }
+
+  /* service */
+  .svc { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .jobs { display: flex; flex-direction: column; gap: 6px; }
+  .job { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; background: rgba(255,255,255,.06); border: 1px solid var(--line); cursor: pointer; }
+  .job:hover { border-color: var(--accent); }
+  .job.done { opacity: .45; }
+  .job .nm { font-weight: 700; }
+  .job .st { font-size: 12px; color: var(--muted); }
+  .job .mn { font-weight: 800; white-space: nowrap; }
+  .lanes { display: flex; flex-direction: column; gap: 10px; }
+  .lane { position: relative; height: 40px; border-radius: 8px; background: rgba(255,255,255,.05); border: 1px solid var(--line); overflow: hidden; }
+  .lane .who { position: absolute; left: 6px; top: -1px; font-size: 11px; color: var(--muted); }
+  .lane .blk { position: absolute; top: 14px; height: 22px; border-radius: 5px; font-size: 11.5px; font-weight: 700; color: #1a0a00; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; cursor: pointer; border: 1px solid rgba(0,0,0,.3); }
+  .lane .limit { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); }
+  .svcsum { margin-top: 8px; font-size: 15px; }
+  .svcsum b { font-size: 18px; }
+  .tyres { display: flex; gap: 8px; margin-top: 6px; }
+  .tyre { flex: 1; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255,255,255,.05); cursor: pointer; font-size: 13px; }
+  .tyre b { display: block; font-size: 14px; }
+  .tyre.on { border-color: var(--accent); background: rgba(249,115,22,.15); }
+  @media (max-width: 640px) { .svc { grid-template-columns: 1fr; } #msg { font-size: 44px; } .pn { min-width: 72px; padding: 4px 8px; } .pn .ar { font-size: 22px; } }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="hudL" class="panel">
+  <div class="ss" id="ssName">SS1</div>
+  <div class="tm" id="time">0:00.0</div>
+  <div class="pen" id="pen"></div>
+  <div id="progress"><i></i></div>
+</div>
+<div id="note"></div>
+<div id="hudR"><button class="btn" id="voiceBtn" title="Kartläsaren">🔊</button><button class="btn" id="resetBtn" title="Tillbaka på vägen (+5 s)">↺ Vägen</button></div>
+<div id="speedo" class="panel"><b id="kmh">0</b><span>km/h</span><span id="gear">1</span></div>
+<div id="dmg" class="panel"></div>
+<div id="hint" class="panel">Piltangenter / WASD · Mellanslag = handbroms · R = tillbaka på vägen</div>
+<div id="msg"></div>
+
+<div id="touch">
+  <div class="grp"><div class="tb" data-k="left">◀</div><div class="tb" data-k="right">▶</div></div>
+  <div class="grp"><div class="tb sm" data-k="hand">HAND-<br>BROMS</div><div class="tb" data-k="brake">▼</div><div class="tb" data-k="gas">▲</div></div>
+</div>
+
+<div id="intro" class="modal">
+  <div class="panel">
+    <h1>Rallystallet</h1>
+    <p class="small">Känslotest · två sträckor och en servicepark</p>
+    <p>Ditt team har fått en plats i en grusrally i de värmländska skogarna. Kör två specialsträckor så snabbt du kan. Kartläsaren ropar ut kurvorna: <b>siffran är hur snabb kurvan är</b>, där 1 är en tvär kurva och 6 nästan rakt. Krön och hopp varnas också.</p>
+    <p>Allt du kör på syns på bilen: träd, hårda landningar och åkande i diket ger skador som påverkar hur den kör. Mellan sträckorna har du <b>20 minuter i serviceparken</b> och två mekaniker. Du hinner inte laga allt.</p>
+    <div class="keys">
+      <span><kbd>↑</kbd> <kbd>W</kbd></span><span>Gas</span>
+      <span><kbd>↓</kbd> <kbd>S</kbd></span><span>Broms / back</span>
+      <span><kbd>←</kbd><kbd>→</kbd> <kbd>A</kbd><kbd>D</kbd></span><span>Styr</span>
+      <span><kbd>Mellanslag</kbd></span><span>Handbroms: få bakvagnen att släppa i tvära kurvor</span>
+      <span><kbd>R</kbd></span><span>Tillbaka på vägen (+5 s)</span>
+    </div>
+    <p class="small">På mobil eller surfplatta: knappar på skärmen. Ljud på rekommenderas.</p>
+    <p style="text-align:center;margin-top:14px"><button class="btn big" id="startBtn">Till startlinjen</button></p>
+  </div>
+</div>
+
+<div id="result" class="modal hidden">
+  <div class="panel">
+    <h1 id="resTitle">SS1 klar</h1>
+    <p id="resSub" class="small"></p>
+    <table id="resTable"></table>
+    <div id="resDmg"></div>
+    <p style="text-align:center;margin-top:14px"><button class="btn big" id="resBtn">Till serviceparken</button></p>
+  </div>
+</div>
+
+<div id="service" class="modal hidden">
+  <div class="panel">
+    <h1>Serviceparken</h1>
+    <p class="small">Tryck på ett jobb för att ge det till den mekaniker som har minst att göra. Tryck på ett block för att ta bort det. Varje påbörjad minut över 20 kostar <b>10 sekunder</b> i straff.</p>
+    <div class="weather" id="forecast"></div>
+    <div class="svc">
+      <div>
+        <h2>Jobb</h2>
+        <div class="jobs" id="jobs"></div>
+        <h2>Däck till nästa sträcka</h2>
+        <div class="tyres" id="tyres"></div>
+      </div>
+      <div>
+        <h2>Mekaniker</h2>
+        <div class="lanes" id="lanes"></div>
+        <div class="svcsum" id="svcsum"></div>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:16px"><button class="btn big" id="svcBtn">Ut på nästa sträcka</button></p>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
