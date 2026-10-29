@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bruksåret 1780–81</title>
+<style>
+  :root {
+    --panel: rgba(18, 16, 14, .86);
+    --line: rgba(255, 240, 220, .14);
+    --ink: #f3ece2;
+    --muted: #b3a796;
+    --ok: #7ccf8a;
+    --warn: #f2b84b;
+    --bad: #ef6b5b;
+    --fire: #ff8a3c;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0c0b; color: var(--ink); font: 14px/1.4 Georgia, "Times New Roman", serif; }
+  canvas { display: block; touch-action: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 10px; }
+  .hidden { display: none !important; }
+  h3 { margin: 0 0 6px; font: 600 11px system-ui; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .btn { background: rgba(255,240,220,.1); color: var(--ink); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; font: 600 12.5px system-ui; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: rgba(255,240,220,.18); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.on { background: rgba(255,138,60,.25); border-color: var(--fire); }
+  .btn.fire { background: #c2521d; border-color: #ff8a3c; color: #fff; }
+  .btn.pulse { animation: pulse 0.9s infinite; }
+  .btn.big { background: #c2521d; color: #fff; border: 0; padding: 12px 22px; font-size: 16px; border-radius: 9px; }
+  .btn.sm { padding: 3px 8px; font-size: 12px; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(255, 138, 60, .35); } }
+
+  #top { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 14px; align-items: center; padding: 7px 14px; white-space: nowrap; font-family: system-ui; }
+  #date { font: 700 17px Georgia, serif; }
+  #season { font-size: 12px; color: var(--muted); }
+  #weather { font-size: 13px; }
+  .sp { display: flex; gap: 4px; }
+
+  #left { position: fixed; left: 8px; top: calc(8px + env(safe-area-inset-top)); width: 310px; z-index: 4; max-height: calc(100% - 16px); overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-family: system-ui; }
+  #right { position: fixed; right: 8px; top: calc(8px + env(safe-area-inset-top)); width: 270px; z-index: 4; padding: 12px 14px; max-height: calc(100% - 16px); overflow-y: auto; font-family: system-ui; }
+  .st { padding: 0; overflow: hidden; }
+  .st > .hd { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; cursor: pointer; gap: 8px; }
+  .st > .hd:hover { background: rgba(255,240,220,.05); }
+  .st > .hd b { font: 700 15px Georgia, serif; }
+  .st > .hd .sum { font-size: 12px; color: var(--muted); text-align: right; }
+  .st > .hd .badge { background: var(--bad); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11.5px; font-weight: 700; margin-left: 6px; animation: pulse 1s infinite; }
+  .st > .bd { padding: 2px 12px 12px; border-top: 1px solid var(--line); }
+  .st.closed > .bd { display: none; }
+
+  .tbig { display: flex; align-items: baseline; gap: 8px; }
+  .tbig b { font: 800 28px system-ui; font-variant-numeric: tabular-nums; }
+  .tbig span { font-size: 12.5px; color: var(--muted); }
+  .tbar { position: relative; height: 11px; border-radius: 6px; margin: 4px 0 2px;
+    background: linear-gradient(90deg, #3a5a8c 0%, #4a6fa0 22%, #c58b3b 30%, #7ccf8a 48%, #7ccf8a 74%, #f2b84b 82%, #ef6b5b 100%); }
+  .tbar i { position: absolute; top: -4px; width: 4px; height: 19px; background: #fff; border-radius: 2px; box-shadow: 0 0 6px #000; transition: left .25s; }
+  .tscale { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 3px 0; font-size: 13px; }
+  .row b { font-variant-numeric: tabular-nums; }
+  .small { font-size: 11.5px; color: var(--muted); }
+  .meter { height: 7px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; position: relative; }
+  .meter i { display: block; height: 100%; transition: width .25s; }
+  .meter .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--bad); }
+  .sect { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .read { font: italic 13px Georgia, serif; color: #e6d7c2; margin: 2px 0; }
+  #shaftWrap { display: flex; gap: 10px; align-items: stretch; }
+  #shaft { width: 40px; height: 120px; position: relative; background: #241d17; border: 2px solid #5a4b3b; overflow: hidden; clip-path: polygon(22% 0, 78% 0, 100% 62%, 80% 100%, 20% 100%, 0 62%); }
+  #shaft .ch { position: absolute; left: 0; right: 0; height: 12.5%; border-top: 1px solid rgba(0,0,0,.4); }
+  #shaft .hang { position: absolute; inset: 0; background: repeating-linear-gradient(45deg, rgba(239,107,91,.3) 0 6px, transparent 6px 12px); }
+  .ctl { margin: 7px 0 2px; }
+  .ctl label { display: flex; justify-content: space-between; font-weight: 600; font-size: 12.5px; }
+  .ctl label span { color: var(--muted); font-weight: 400; }
+  .ctl input[type=range] { width: 100%; accent-color: var(--fire); }
+  .btns { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper b { min-width: 22px; text-align: center; }
+
+  .mila { padding: 7px 9px; border-radius: 8px; background: rgba(255,240,220,.05); border: 1px solid var(--line); margin: 5px 0; }
+  .mila.alarm { border-color: var(--bad); background: rgba(239,107,91,.12); }
+  .mila .t { display: flex; justify-content: space-between; font-size: 12.5px; }
+  .mila .t b { font-size: 13px; }
+  .lot { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+
+  #log { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 4; width: min(540px, calc(100% - 620px)); min-width: 280px; display: flex; flex-direction: column-reverse; gap: 4px; pointer-events: none; font-family: system-ui; }
+  .msg { padding: 6px 11px; font-size: 13px; animation: tin .3s ease-out; }
+  .msg.bad { border-color: rgba(239,107,91,.7); color: #ffd2cb; }
+  .msg.warn { border-color: rgba(242,184,75,.6); }
+  .msg.good { border-color: rgba(124,207,138,.5); }
+  .msg.tip { border-color: rgba(140,180,255,.5); color: #d6e4ff; }
+  .msg.out { opacity: 0; transition: opacity .8s; }
+  @keyframes tin { from { transform: translateY(8px); opacity: 0; } }
+
+  #labels { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; font-family: system-ui; }
+  .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 2px 7px; border-radius: 7px; background: rgba(18,16,14,.8); border: 1px solid var(--line); font-size: 11.5px; pointer-events: auto; cursor: pointer; }
+  .lbl.alarm { border-color: var(--bad); color: #ffd2cb; animation: pulse 1s infinite; }
+
+  .modal { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 4, .66); padding: 14px; }
+  .modal > .panel { max-width: 640px; width: 100%; padding: 22px 24px; max-height: 100%; overflow-y: auto; }
+  .modal h1 { margin: 0 0 4px; font-size: 28px; }
+  .modal p { color: #e3d8c8; margin: 8px 0; }
+  .modal ul { padding-left: 20px; color: #e3d8c8; margin: 8px 0; }
+  .modal li { margin: 5px 0; }
+  .modal .small { font: 12.5px system-ui; color: var(--muted); }
+  .choices { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .choice { text-align: left; padding: 11px 13px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255,240,220,.06); color: var(--ink); cursor: pointer; font: 14px system-ui; }
+  .choice:hover { border-color: var(--fire); background: rgba(255,138,60,.12); }
+  .choice b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .choice span { color: var(--muted); font-size: 13px; }
+  .stars { font-size: 40px; letter-spacing: 6px; color: var(--warn); text-align: center; }
+  table { width: 100%; border-collapse: collapse; font: 14px system-ui; }
+  td { padding: 5px 4px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  td.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 1000px) {
+    #left, #right { width: 48vw; max-height: 48vh; top: auto; bottom: calc(8px + env(safe-area-inset-bottom)); }
+    #log { bottom: auto; top: 64px; width: calc(100% - 16px); }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+<div id="top" class="panel">
+  <div><div id="date">1 juni 1780</div><div id="season">Sommar</div></div>
+  <div id="weather"></div>
+  <div class="sp">
+    <button class="btn" data-sp="0" title="Paus">❚❚</button>
+    <button class="btn on" data-sp="1">1×</button>
+    <button class="btn" data-sp="2">2×</button>
+    <button class="btn" data-sp="4">4×</button>
+  </div>
+</div>
+
+<div id="left">
+  <!-- MASUGNEN -->
+  <div class="st panel closed" id="stF">
+    <div class="hd" data-st="F"><b>🔥 Masugnen</b><span class="sum" id="sumF"></span></div>
+    <div class="bd">
+      <div id="fOff">
+        <p class="small" id="fOffTxt"></p>
+        <div class="row"><span>Infodringens slitage</span><b id="wearOff">0 %</b></div>
+        <div class="btns"><button class="btn fire" id="lightBtn">Tänd masugnen</button><button class="btn" id="relineBtn">Mura om (15 dagar, 600 daler)</button></div>
+      </div>
+      <div id="fOn">
+        <div class="tbig"><b id="temp">—</b><span>°C i härden</span><span id="trend"></span></div>
+        <div class="tbar"><i id="tmark"></i></div>
+        <div class="tscale"><span>1100 fryser</span><span>bra 1330–1480</span><span>1560</span></div>
+        <div class="read" id="flame"></div>
+        <div class="sect">
+          <div id="shaftWrap">
+            <div id="shaft"></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;font-size:12px;color:var(--muted)">
+              <div>Schaktet: satserna sjunker nedåt.<br>Mörk = mycket kol (varm), rostbrun = mycket malm (kall).</div>
+              <div id="shaftTime"></div>
+              <div class="row" style="margin:0"><span>Ansats</span><b id="ansatsTxt">0 %</b></div>
+              <div class="meter"><i id="ansats" style="background:var(--warn);width:0"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="sect">
+          <div class="row"><span>Härden (järn + slagg)</span><b id="hearthTxt">0 %</b></div>
+          <div class="meter"><i id="hearth" style="background:var(--fire);width:0"></i><span class="mark" style="left:92%"></span></div>
+          <div class="row"><span>Infodringens slitage</span><b id="wearTxt">0 %</b></div>
+        </div>
+        <div class="ctl"><label>Malmsats <span id="ratioTxt"></span></label><input type="range" id="ratio" min="0.6" max="1.8" step="0.05" value="1.0"></div>
+        <div class="ctl"><label>Bläster <span id="blastTxt"></span></label><input type="range" id="blast" min="0.2" max="1" step="0.05" value="0.8"></div>
+        <div class="btns">
+          <button class="btn fire" id="tapBtn">Tappa härden</button>
+          <button class="btn" id="pokeBtn" disabled>Stöt loss</button>
+          <button class="btn" id="blowDownBtn">Blås ner</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KOLNINGEN -->
+  <div class="st panel closed" id="stK">
+    <div class="hd" data-st="K"><b>🌲 Kolningen</b><span class="sum" id="sumK"></span></div>
+    <div class="bd">
+      <div class="row"><span>Kolare (2,5 daler/dag var)</span><span class="stepper"><button class="btn sm" id="kolMinus">−</button><b id="kolN">2</b><button class="btn sm" id="kolPlus">+</button></span></div>
+      <div class="row"><span>Hästar för kolkörning (1,5 daler/dag)</span><span class="stepper"><button class="btn sm" id="horseMinus">−</button><b id="horseN">2</b><button class="btn sm" id="horsePlus">+</button></span></div>
+      <div class="small" id="haulTxt"></div>
+      <div id="milor"></div>
+      <div class="sect">
+        <h3>Skiften – res en ny mila</h3>
+        <div id="lots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMEDJAN -->
+  <div class="st panel closed" id="stS">
+    <div class="hd" data-st="S"><b>🔨 Hammarsmedjan</b><span class="sum" id="sumS"></span></div>
+    <div class="bd">
+      <div class="row"><span>Takt</span><span class="btns" style="margin:0"><button class="btn sm" data-takt="0.7">Lugn</button><button class="btn sm on" data-takt="1">Normal</button><button class="btn sm" data-takt="1.3">Hård</button></span></div>
+      <div class="small">Hård takt ger mer stångjärn men drar mer kol, och hammarskaftet kan spricka.</div>
+      <div class="row" style="margin-top:8px"><span>Vattnet går först till</span><span class="btns" style="margin:0"><button class="btn sm on" data-prio="F">Masugnen</button><button class="btn sm" data-prio="S">Smedjan</button></span></div>
+      <div class="small" id="smithTxt"></div>
+      <div class="btns"><button class="btn fire hidden" id="repairBtn">Byt hammarskaft</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="right" class="panel">
+  <h3>Bruket</h3>
+  <div class="row"><span>Kassa</span><b id="money"></b></div>
+  <div class="row small"><span id="costTxt"></span></div>
+  <div class="sect">
+    <h3>Lager</h3>
+    <div class="row"><span>Kol i kolhuset</span><b id="coal"></b></div>
+    <div class="row small"><span id="coalForest"></span></div>
+    <div class="row"><span>Rostad malm</span><b id="ore"></b></div>
+    <div class="row"><span>Tackjärn</span><b id="pig"></b></div>
+    <div class="row"><span>Stångjärn</span><b id="bar"></b></div>
+  </div>
+  <div class="sect">
+    <h3>Vattnet i ån</h3>
+    <div class="meter"><i id="water" style="background:#6aa8ff"></i></div>
+    <div class="small" id="waterTxt"></div>
+  </div>
+  <div class="sect">
+    <h3>Kontrakt</h3>
+    <div id="contracts"></div>
+    <div class="row"><span>Järnvågen</span><b id="price"></b></div>
+    <div class="btns"><button class="btn" id="sellBtn">Sälj 50 skp stångjärn</button><button class="btn" id="sellPigBtn">Sälj 50 skp tackjärn (8 d)</button><button class="btn" id="buyCoalBtn">Köp 40 lass kol</button></div>
+  </div>
+</div>
+
+<div id="labels"></div>
+<div id="log"></div>
+
+<div id="intro" class="modal">
+  <div class="panel">
+    <h1>Bruksåret 1780–81</h1>
+    <p class="small">Känslotest · ett helt år med masugnen, kolningen och hammarsmedjan</p>
+    <p>Det är juni. Förra årets blåsning är slut, kolhuset är nästan tomt och det finns lite tackjärn kvar. Ett bruksår hänger ihop: <b>det du gör på sommaren avgör om vintern går att klara.</b></p>
+    <ul>
+      <li><b>🌲 Kolningen:</b> res milor ute i skogsskiftena, en per kolare. En mila kolar i ett par veckor. När röken slår igenom måste den <b>tätas</b>, annars brinner kolet upp. Kolet körs in med häst, och det går tre gånger fortare på vinterns slädföre.</li>
+      <li><b>🔥 Masugnen:</b> tänd den när du har kol nog. Den drar mycket kol, så den brukar blåsa på vintern. Sedan sköter du den som förra gången. Ett slitet foder måste muras om innan nästa blåsning.</li>
+      <li><b>🔨 Smedjan:</b> gör stångjärn av tackjärnet året runt. Den behöver vatten, och ån är låg på sommaren. Du väljer om masugnen eller smedjan ska få vattnet först.</li>
+      <li><b>Kontrakt</b> dyker upp under året. Stångjärnet ska finnas i lager på leveransdagen.</li>
+    </ul>
+    <p class="small">Tryck på en station i listan till vänster för att öppna den och flyga dit. Röda märken betyder att något behöver dig. Siffrorna är förenklade, men händelserna bygger på hur verkliga bruk fungerade.</p>
+    <p style="text-align:center;margin-top:12px"><button class="btn big" id="startBtn">Börja bruksåret</button></p>
+  </div>
+</div>
+
+<div id="event" class="modal hidden">
+  <div class="panel">
+    <h1 id="evTitle"></h1>
+    <div id="evText"></div>
+    <div class="choices" id="evChoices"></div>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
