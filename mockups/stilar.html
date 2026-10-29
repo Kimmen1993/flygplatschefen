@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flygplatschefen – välj stil</title>
+<style>
+  :root { --bg:#f3f1ec; --ink:#1d2430; --muted:#5b6575; --card:#fff; --line:#ddd8cf; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  .lead { color:var(--muted); margin:0 0 24px; max-width:720px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .card svg { display:block; width:100%; height:auto; }
+  .txt { padding:14px 16px 18px; }
+  .txt h2 { margin:0 0 4px; font-size:19px; }
+  .txt p { margin:0 0 8px; color:var(--muted); font-size:15px; }
+  .tag { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:99px; background:#eceae4; margin-right:4px; }
+  .note { margin-top:28px; padding:14px 16px; background:#fff; border:1px solid var(--line); border-radius:12px; color:var(--muted); font-size:15px; }
+  .hud { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-weight:700; }
+  .blink { animation:blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity:.25; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Flygplatschefen: välj utseende</h1>
+  <p class="lead">Tre skisser av samma ögonblick mitt i ett pass: ett plan landar, två står vid gate, en tankbil är på väg och ett larm har gått. Det är bara stilen som skiljer, inte spelet. Säg vilken du gillar, eller vad du vill blanda.</p>
+
+  <div class="grid">
+
+  <!-- ============ STIL 1: REN & MODERN ============ -->
+  <div class="card">
+  <svg viewBox="0 0 400 260" role="img" aria-label="Stil 1: ren och modern">
+    <defs>
+      <path id="p1" d="M0,-14 L2.4,-6 L14,1 L14,4 L2.4,1 L2,9 L6,12 L6,14 L0,12.5 L-6,14 L-6,12 L-2,9 L-2.4,1 L-14,4 L-14,1 L-2.4,-6 Z"/>
+    </defs>
+    <rect width="400" height="260" fill="#e8efe4"/>
+    <!-- runway -->
+    <rect x="30" y="40" width="340" height="26" rx="4" fill="#9aa3ad"/>
+    <line x1="45" y1="53" x2="355" y2="53" stroke="#fff" stroke-width="2" stroke-dasharray="12 10"/>
+    <!-- taxiway -->
+    <path d="M90,66 V150 H310 V66" fill="none" stroke="#c3c9cf" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M90,66 V150 H310 V66" fill="none" stroke="#f2c94c" stroke-width="1.5"/>
+    <!-- terminal -->
+    <rect x="70" y="200" width="260" height="40" rx="6" fill="#ffffff" stroke="#cfd6dc"/>
+    <g fill="#cfd6dc"><rect x="110" y="168" width="6" height="32"/><rect x="197" y="168" width="6" height="32"/><rect x="284" y="168" width="6" height="32"/></g>
+    <g font-size="9" fill="#5b6575" class="hud" text-anchor="middle"><text x="113" y="234">A1</text><text x="200" y="234">A2</text><text x="287" y="234">A3</text></g>
+    <!-- planes at gates -->
+    <use href="#p1" transform="translate(113,178) scale(1.1)" fill="#3a7bd5"/>
+    <use href="#p1" transform="translate(287,178) scale(1.1)" fill="#e5533d"/>
+    <!-- landing plane -->
+    <use href="#p1" fill="#2f9e6e"><animateMotion dur="5s" repeatCount="indefinite" rotate="auto" path="M70,53 L345,53"/></use>
+    <!-- fuel truck -->
+    <g transform="translate(225,150)"><rect x="-8" y="-5" width="16" height="10" rx="2" fill="#f2994a"/><animateTransform attributeName="transform" type="translate" values="160,150;225,150;160,150" dur="6s" repeatCount="indefinite"/></g>
+    <!-- alarm -->
+    <g class="blink"><circle cx="350" cy="110" r="13" fill="#e5533d"/><text x="350" y="115" font-size="15" fill="#fff" text-anchor="middle" class="hud">!</text></g>
+    <!-- HUD -->
+    <rect x="0" y="0" width="400" height="26" fill="#ffffff" opacity=".9"/>
+    <g class="hud" font-size="11" fill="#1d2430"><text x="10" y="17">Pass 3 · 04:12</text><text x="160" y="17">Avgångar 5/12</text><text x="300" y="17" fill="#f2b705">★★☆</text></g>
+  </svg>
+  <div class="txt">
+    <h2>1. Ren &amp; modern</h2>
+    <p>Platt, ljus och lugn som en karta. Lätt att se allt på en gång, även när det blir rörigt. Fungerar mycket bra på liten telefonskärm.</p>
+    <span class="tag">tydlig</span><span class="tag">stilren</span><span class="tag">snabb att bygga</span>
+  </div>
+  </div>
+
+  <!-- ============ STIL 2: LEKSAKSVÄRLD ============ -->
+  <div class="card">
+  <svg viewBox="0 0 400 260" role="img" aria-label="Stil 2: leksaksvärld">
+    <defs>
+      <path id="p2" d="M0,-15 C3,-15 3.5,-9 3.5,-6 L15,1 C16,2 16,5 15,5 L3.5,2 L3,9 L7,12 C8,13 8,15 7,15 L0,13.5 L-7,15 C-8,15 -8,13 -7,12 L-3,9 L-3.5,2 L-15,5 C-16,5 -16,2 -15,1 L-3.5,-6 C-3.5,-9 -3,-15 0,-15 Z"/>
+      <filter id="sh2"><feDropShadow dx="2" dy="3" stdDeviation="1.5" flood-opacity=".3"/></filter>
+    </defs>
+    <rect width="400" height="260" fill="#8fd16a"/>
+    <g fill="#7cc257"><circle cx="20" cy="110" r="16"/><circle cx="380" cy="190" r="20"/><circle cx="30" cy="230" r="14"/><circle cx="365" cy="100" r="11"/></g>
+    <g fill="#4e9a3a"><circle cx="18" cy="106" r="8"/><circle cx="378" cy="186" r="10"/></g>
+    <rect x="30" y="38" width="340" height="30" rx="15" fill="#5d6470" filter="url(#sh2)"/>
+    <line x1="50" y1="53" x2="350" y2="53" stroke="#fff" stroke-width="3" stroke-dasharray="14 10" stroke-linecap="round"/>
+    <path d="M90,68 V150 H310 V68" fill="none" stroke="#7a828e" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="66" y="196" width="268" height="48" rx="12" fill="#ffd166" stroke="#e0a800" stroke-width="2" filter="url(#sh2)"/>
+    <g fill="#5fb7ff"><rect x="80" y="206" width="240" height="10" rx="5"/></g>
+    <g fill="#e0a800"><rect x="108" y="168" width="10" height="30" rx="4"/><rect x="195" y="168" width="10" height="30" rx="4"/><rect x="282" y="168" width="10" height="30" rx="4"/></g>
+    <use href="#p2" transform="translate(113,178) scale(1.15)" fill="#ffffff" stroke="#3a7bd5" stroke-width="2" filter="url(#sh2)"/>
+    <use href="#p2" transform="translate(287,178) scale(1.15)" fill="#ffffff" stroke="#ef476f" stroke-width="2" filter="url(#sh2)"/>
+    <g filter="url(#sh2)"><use href="#p2" fill="#ffffff" stroke="#06a77d" stroke-width="2"><animateMotion dur="5s" repeatCount="indefinite" rotate="auto" path="M70,53 L345,53"/></use></g>
+    <g filter="url(#sh2)"><g><rect x="-10" y="-7" width="20" height="14" rx="5" fill="#ff8c42"/><circle cx="-6" cy="8" r="3" fill="#333"/><circle cx="6" cy="8" r="3" fill="#333"/><animateTransform attributeName="transform" type="translate" values="160,148;225,148;160,148" dur="6s" repeatCount="indefinite"/></g></g>
+    <g class="blink" filter="url(#sh2)"><circle cx="350" cy="120" r="15" fill="#ef476f" stroke="#fff" stroke-width="3"/><text x="350" y="126" font-size="17" fill="#fff" text-anchor="middle" class="hud">!</text></g>
+    <rect x="8" y="4" width="384" height="26" rx="13" fill="#ffffff" filter="url(#sh2)"/>
+    <g class="hud" font-size="11" fill="#33415c"><text x="20" y="21">Pass 3 · 04:12</text><text x="160" y="21">Avgångar 5/12</text><text x="305" y="21" fill="#f4a100">★★☆</text></g>
+  </svg>
+  <div class="txt">
+    <h2>2. Leksaksvärld</h2>
+    <p>Färgglad och rund, som en leksaksflygplats. Lekfull och välkomnande för yngre spelare, men utmaningen är lika hård. Mycket "liv" med träd, skuggor och små detaljer.</p>
+    <span class="tag">glad</span><span class="tag">charmig</span><span class="tag">alla åldrar</span>
+  </div>
+  </div>
+
+  <!-- ============ STIL 3: NATTPASS ============ -->
+  <div class="card">
+  <svg viewBox="0 0 400 260" role="img" aria-label="Stil 3: nattpass">
+    <defs>
+      <path id="p3" d="M0,-14 L2.4,-6 L14,1 L14,4 L2.4,1 L2,9 L6,12 L6,14 L0,12.5 L-6,14 L-6,12 L-2,9 L-2.4,1 L-14,4 L-14,1 L-2.4,-6 Z"/>
+      <filter id="gl3"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <radialGradient id="rg3" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#1b2a3d"/><stop offset="1" stop-color="#0a121c"/></radialGradient>
+    </defs>
+    <rect width="400" height="260" fill="url(#rg3)"/>
+    <rect x="30" y="40" width="340" height="26" fill="#1f2a36"/>
+    <g fill="#ffe08a" filter="url(#gl3)">
+      <circle cx="40" cy="42" r="1.4"/><circle cx="80" cy="42" r="1.4"/><circle cx="120" cy="42" r="1.4"/><circle cx="160" cy="42" r="1.4"/><circle cx="200" cy="42" r="1.4"/><circle cx="240" cy="42" r="1.4"/><circle cx="280" cy="42" r="1.4"/><circle cx="320" cy="42" r="1.4"/><circle cx="360" cy="42" r="1.4"/>
+      <circle cx="40" cy="64" r="1.4"/><circle cx="80" cy="64" r="1.4"/><circle cx="120" cy="64" r="1.4"/><circle cx="160" cy="64" r="1.4"/><circle cx="200" cy="64" r="1.4"/><circle cx="240" cy="64" r="1.4"/><circle cx="280" cy="64" r="1.4"/><circle cx="320" cy="64" r="1.4"/><circle cx="360" cy="64" r="1.4"/>
+    </g>
+    <path d="M90,66 V150 H310 V66" fill="none" stroke="#1a242f" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M90,66 V150 H310 V66" fill="none" stroke="#38d39f" stroke-width="1.5" stroke-dasharray="2 6" filter="url(#gl3)"/>
+    <rect x="70" y="200" width="260" height="40" fill="#162130" stroke="#2c3e55"/>
+    <g fill="#ffcf6b" opacity=".85"><rect x="80" y="210" width="14" height="6"/><rect x="100" y="210" width="14" height="6"/><rect x="150" y="210" width="14" height="6"/><rect x="230" y="210" width="14" height="6"/><rect x="270" y="210" width="14" height="6"/><rect x="300" y="210" width="14" height="6"/></g>
+    <g fill="#2c3e55"><rect x="110" y="168" width="6" height="32"/><rect x="197" y="168" width="6" height="32"/><rect x="284" y="168" width="6" height="32"/></g>
+    <use href="#p3" transform="translate(113,178) scale(1.1)" fill="#cfd8e3"/>
+    <use href="#p3" transform="translate(287,178) scale(1.1)" fill="#cfd8e3"/>
+    <g><use href="#p3" fill="#ffffff"/><circle cx="0" cy="-15" r="2" fill="#fff" filter="url(#gl3)"/><circle cx="-14" cy="2" r="1.6" fill="#ff4d4d" filter="url(#gl3)"/><circle cx="14" cy="2" r="1.6" fill="#38d39f" filter="url(#gl3)"/><animateMotion dur="5s" repeatCount="indefinite" rotate="auto" path="M70,53 L345,53"/></g>
+    <g><rect x="-8" y="-5" width="16" height="10" fill="#d9822b"/><circle cx="0" cy="-7" r="2" fill="#ffb347" class="blink" filter="url(#gl3)"/><animateTransform attributeName="transform" type="translate" values="160,150;225,150;160,150" dur="6s" repeatCount="indefinite"/></g>
+    <g class="blink" filter="url(#gl3)"><circle cx="350" cy="110" r="13" fill="none" stroke="#ff4d4d" stroke-width="3"/><text x="350" y="115" font-size="15" fill="#ff4d4d" text-anchor="middle" class="hud">!</text></g>
+    <rect x="0" y="0" width="400" height="26" fill="#0a121c" opacity=".85"/>
+    <g class="hud" font-size="11" fill="#38d39f" font-family="ui-monospace,Menlo,Consolas,monospace"><text x="10" y="17">PASS 3 · 04:12</text><text x="160" y="17">AVG 5/12</text><text x="300" y="17" fill="#ffcf6b">★★☆</text></g>
+  </svg>
+  <div class="txt">
+    <h2>3. Nattpass</h2>
+    <p>Mörk flygplats med banljus som glöder, nästan som att sitta i tornet. Stämningsfull och lite mer "vuxen" och spänd. Larmen syns extra tydligt mot mörkret.</p>
+    <span class="tag">stämning</span><span class="tag">spänning</span><span class="tag">realistisk känsla</span>
+  </div>
+  </div>
+
+  </div>
+
+  <div class="note"><b>Tips:</b> Stilarna går att blanda. Man kan till exempel köra stil 1 eller 2 på dagen och låta vissa pass vara nattpass i stil 3, så att svårare pass känns mer spända. Det här är skisser. Det riktiga spelet får fler detaljer, rörelse och ljud.</div>
+</main>
+</body>
+</html>

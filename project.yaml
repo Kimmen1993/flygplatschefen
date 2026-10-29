@@ -1,0 +1,43 @@
+# CCGS project configuration — single source of truth for project settings.
+# See .claude/docs/effects-map.md for full schema.
+
+schema_version: 1
+
+framework:
+  version: 1.2.0
+  last_upgraded: 2026-10-19
+
+project:
+  name: "Flygplatschefen"
+  genre: "Live airport operations / management, career mode"
+  version: "0.1.0"
+  stage: Concept
+  kind: game
+
+# Only rigor and automation are set here; rigor expands to the other knobs.
+modes:
+  rigor: minimal
+  automation: guided
+
+platform:
+  multiplayer: false
+  online: false
+  targets: [Web, Mobile, PC]   # web first (GitHub Pages); wrapped as phone/desktop app later
+  primary_input: "Mouse/Touch"
+  gamepad_support: "None"
+  touch_support: "Full"
+  cert_tier: none
+
+engine:
+  name: "Web"                  # HTML5 Canvas + JavaScript in the browser, no Godot/Unity/Unreal
+  version: "ES2022"
+  language: "JavaScript"
+
+naming:
+  classes: PascalCase
+  variables: camelCase
+  constants: SCREAMING_SNAKE
+  files: kebab-case
+
+updates:
+  check: true
