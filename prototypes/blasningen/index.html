@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blåsningen</title>
+<style>
+  :root { --ink: #f3ece2; --muted: #b3a796; --panel: rgba(18,16,14,.88); --line: rgba(255,240,220,.16); --ok: #7ccf8a; --warn: #f2b84b; --bad: #ef6b5b; --fire: #ff8a3c; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #15120f; color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(6px); }
+  .hidden { display: none !important; }
+  #hudL { position: fixed; left: 10px; top: calc(10px + env(safe-area-inset-top)); padding: 10px 13px; width: 250px; }
+  #hudR { position: fixed; right: 10px; top: calc(10px + env(safe-area-inset-top)); padding: 10px 13px; width: 250px; }
+  h3 { margin: 0 0 4px; font: 600 11px system-ui; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .title { font: 700 17px Georgia, serif; margin-bottom: 4px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; margin: 3px 0; }
+  .row b { font-variant-numeric: tabular-nums; }
+  .meter { height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; margin: 2px 0 6px; }
+  .meter i { display: block; height: 100%; background: var(--ok); transition: width .2s; }
+  #temp { font: 800 32px system-ui; font-variant-numeric: tabular-nums; }
+  .tbar { position: relative; height: 11px; border-radius: 6px; margin: 4px 0 2px; background: linear-gradient(90deg, #3a5a8c 0%, #4a6fa0 18%, #c58b3b 33%, #7ccf8a 50%, #7ccf8a 72%, #f2b84b 82%, #ef6b5b 100%); }
+  .tbar i { position: absolute; top: -4px; width: 4px; height: 19px; background: #fff; border-radius: 2px; box-shadow: 0 0 6px #000; }
+  .tscale { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+  .small { font-size: 12px; color: var(--muted); }
+  #say { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(104px + env(safe-area-inset-bottom)); width: min(620px, calc(100% - 20px)); padding: 8px 13px; font-size: 14.5px; text-align: center; border-color: rgba(140,180,255,.45); }
+  #say.bad { border-color: var(--bad); background: rgba(70,20,16,.9); }
+  #say .who { font-size: 10.5px; color: var(--muted); letter-spacing: .07em; text-transform: uppercase; display: block; }
+  #ctl { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 8px; padding: 9px; align-items: stretch; }
+  .grp { display: flex; gap: 6px; align-items: stretch; }
+  .sep { width: 1px; background: var(--line); margin: 0 3px; }
+  button { font: 600 14px system-ui; color: var(--ink); border: 1px solid var(--line); background: rgba(255,240,220,.1); border-radius: 9px; cursor: pointer; padding: 8px 12px; touch-action: manipulation; }
+  button:hover:not(:disabled) { background: rgba(255,240,220,.18); }
+  button:disabled { opacity: .35; cursor: default; }
+  button .k { display: block; font-size: 10.5px; color: var(--muted); font-weight: 500; }
+  .big { min-width: 86px; min-height: 62px; font-size: 15px; }
+  #bCoal { background: #2a2421; border-color: #5a5048; }
+  #bOre { background: #5a2a1a; border-color: #8a4a30; }
+  #bTap, #bSlag { background: #6a2c10; border-color: var(--fire); }
+  #bTap.on, #bSlag.on { background: #c2521d; box-shadow: 0 0 14px rgba(255,138,60,.7); }
+  #bPoke.pulse, .pulse { animation: pulse .8s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(239,107,91,.45); } }
+  .blast { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 92px; }
+  .blast .bb { display: flex; gap: 4px; margin-top: 3px; }
+  .blast button { padding: 3px 10px; }
+  .modal { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(8,6,4,.7); padding: 14px; }
+  .modal > .panel { max-width: 600px; width: 100%; padding: 22px 24px; max-height: 100%; overflow-y: auto; }
+  .modal h1 { margin: 0 0 6px; font: 700 28px Georgia, serif; }
+  .modal h2 { margin: 0 0 6px; font: 700 21px Georgia, serif; }
+  .modal p { color: #e3d8c8; margin: 8px 0; font-size: 15px; }
+  .modal ul { color: #e3d8c8; padding-left: 20px; font-size: 15px; }
+  .modal li { margin: 5px 0; }
+  .mis { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; margin: 7px 0; background: rgba(255,240,220,.05); cursor: pointer; text-align: left; width: 100%; }
+  .mis:hover:not(:disabled) { border-color: var(--fire); }
+  .mis b { display: block; font-size: 15.5px; }
+  .mis span { color: var(--muted); font-size: 13px; font-weight: 400; }
+  .stars { color: var(--warn); font-size: 20px; letter-spacing: 2px; white-space: nowrap; }
+  .bigstars { color: var(--warn); font-size: 44px; letter-spacing: 6px; text-align: center; }
+  .go { background: #c2521d; border: 0; color: #fff; font-size: 16px; padding: 12px 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; } td { padding: 5px 3px; border-bottom: 1px solid rgba(255,255,255,.08); } td.r { text-align: right; }
+  @media (max-width: 900px) {
+    #hudL, #hudR { width: calc(50% - 15px); padding: 7px 9px; font-size: 12px; }
+    #temp { font-size: 24px; } .title { font-size: 14px; }
+    #ctl { width: calc(100% - 12px); flex-wrap: wrap; justify-content: center; gap: 5px; padding: 6px; }
+    .big { min-width: 64px; min-height: 52px; font-size: 13px; padding: 6px 8px; }
+    .sep { display: none; }
+    #say { bottom: calc(136px + env(safe-area-inset-bottom)); font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="hudL" class="panel">
+  <h3 id="misNo">Uppdrag</h3>
+  <div class="title" id="misTitle"></div>
+  <div class="row"><span>Grått tackjärn</span><b id="goal"></b></div>
+  <div class="meter"><i id="goalBar"></i></div>
+  <div class="row"><span>Skiftet slutar om</span><b id="time"></b></div>
+  <div class="row"><span>Kol kvar</span><b id="coalLeft"></b></div>
+  <div class="row"><span>Malm kvar</span><b id="oreLeft"></b></div>
+  <div class="row small"><span>Infodringens slitage</span><span id="wear"></span></div>
+</div>
+
+<div id="hudR" class="panel">
+  <h3>Värmen i härden</h3>
+  <div><span id="temp">—</span> <span class="small">°C</span> <b id="tword"></b></div>
+  <div class="tbar"><i id="tmark"></i></div>
+  <div class="tscale"><span>1100 fryser</span><span>grått järn 1380+</span><span>1560</span></div>
+  <div class="row small" style="margin-top:6px"><span>Malm per kol som smälter nu</span><b id="ratioNow" style="color:var(--ink)"></b></div>
+  <div class="row small"><span>Härden (järn + slagg)</span><b id="hearthTxt" style="color:var(--ink)"></b></div>
+</div>
+
+<div id="say" class="panel"><span class="who">Masmästaren</span><span id="sayTxt"></span></div>
+
+<div id="ctl" class="panel">
+  <div class="grp">
+    <button class="big" id="bCoal">⚫ Kol<span class="k">tangent K</span></button>
+    <button class="big" id="bOre">🟤 Malm<span class="k">tangent M</span></button>
+  </div>
+  <div class="sep"></div>
+  <div class="blast"><span class="small">Bläster</span><b id="blastTxt">70 %</b><div class="bb"><button id="bBm">−</button><button id="bBp">+</button></div></div>
+  <div class="sep"></div>
+  <div class="grp">
+    <button class="big" id="bTap">Tappa järn<span class="k">håll in · J</span></button>
+    <button class="big" id="bSlag">Släpp slagg<span class="k">håll in · S</span></button>
+    <button class="big" id="bPoke">Stöt loss<span class="k">mellanslag</span></button>
+  </div>
+</div>
+
+<div id="menu" class="modal">
+  <div class="panel">
+    <h1>Blåsningen</h1>
+    <p>Du är masmästare vid en svensk masugn på 1780-talet. Uppe vid gichten lastar du <b>kol och malm</b> i lager. Lagren sjunker sakta ner genom schaktet och smälter i botten. Där nere samlas <b>järnet</b>, som du tappar ut i sandbädden till tackor.</p>
+    <p class="small">Skiss av nya kärnan. Mellan skiften ska du senare bygga ut bruket (kolhus, damm, rostugn …) och låsa upp nya epoker.</p>
+    <div id="misList"></div>
+  </div>
+</div>
+
+<div id="brief" class="modal hidden">
+  <div class="panel">
+    <h3 id="bNo"></h3>
+    <h2 id="bTitle"></h2>
+    <div id="bText"></div>
+    <p style="text-align:center;margin-top:14px"><button class="go" id="bGo">Börja skiftet</button></p>
+  </div>
+</div>
+
+<div id="card" class="modal hidden">
+  <div class="panel">
+    <h2 id="cTitle"></h2>
+    <div id="cText"></div>
+    <p style="text-align:center;margin-top:14px"><button class="go" id="cGo">Fortsätt</button></p>
+  </div>
+</div>
+
+<div id="end" class="modal hidden">
+  <div class="panel">
+    <h2 id="eTitle"></h2>
+    <div class="bigstars" id="eStars"></div>
+    <div id="eText"></div>
+    <p style="text-align:center;margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button id="eRetry">Försök igen</button><button class="go" id="eNext">Nästa uppdrag</button><button id="eMenu">Alla uppdrag</button></p>
+  </div>
+</div>
+
+<script>
+// Blåsningen – skiss av ny kärna: ladda satser lager för lager, se dem sjunka, tappa järnet. Fakta: design/research/bruket-referens.md
+'use strict';
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = n => Math.round(n).toLocaleString('sv-SE');
+
+// ------------------------------------------------------------- inställningar
+const CFG = {
+  coalH: 0.05, oreH: 0.026,          // lagrens tjocklek i schaktet (andel av schaktets höjd) per korg
+  descent: 0.03,                     // schaktets sjunkhastighet vid bläster 1,0 (andel/sekund)
+  hearthCap: 40, tuyere: 36,         // härdens volym; över formornas nivå kyls ugnen
+  tapRate: 4, slagRate: 6,           // enheter per sekund när du håller in
+  tackaSize: 8,                      // skeppund per tacka i sandbädden
+  freezeT: 1180, freezeHold: 8,
+  wearT: 1510,
+};
+const ORES = {
+  rik:   { name: 'Rik bergmalm', r0: 1.0, iron: 1.0, slag: 0.7, col: '#8a3b22' },
+  mager: { name: 'Mager malm', r0: 0.72, iron: 0.75, slag: 1.15, col: '#8d7258' },
+};
+const MISSIONS = [
+  { title: 'Första skiftet', time: 240, coal: 80, ore: 140, goal: [30, 45, 60], ore0: 'rik', blastMax: 1, hang: false,
+    brief: `<p>Masugnen är tänd och varm. Ditt jobb i dag:</p><ul><li><b>Ladda</b> kol och malm uppe i gichten (K och M). Lagren sjunker ner och smälter i botten om ungefär 40 sekunder.</li><li><b>Mer malm = mer järn, men kallare.</b> Kolet ger värmen. Ungefär <b>en malm per kol</b> håller ugnen lagom med den här malmen.</li><li><b>Tappa</b> järnet när härden fylls: håll in "Tappa järn" och <b>släpp innan järnet tar slut</b>, annars rinner slaggen ut i sandbädden. Slaggen släpper du separat.</li></ul><p>Mål: <b>30 skeppund grått tackjärn</b> innan skiftet slutar (45 och 60 för fler stjärnor). Grått järn blir det när härden är över 1 380 °C.</p>`, events: [] },
+  { title: 'Ny malm från gruvan', time: 270, coal: 95, ore: 150, goal: [28, 40, 52], ore0: 'rik', blastMax: 1, hang: true,
+    brief: `<p>Gruvan har slagit in på en ny gång. Om en stund börjar <b>magrare malm</b> komma. Den ger mindre järn och mer slagg, och den kräver <b>mer kol</b> för att hålla värmen.</p><p>Ny fara: <b>hängning</b>. Lagren kan fastna i schaktet medan det under fortsätter smälta. Du ser glappet. Tryck <b>Stöt loss</b> innan det blir stort, för när det rasar av sig själv kommer en stor kall klump ner i härden.</p><p>Mål: <b>28 skeppund grått tackjärn</b>.</p>`,
+    events: [{ at: 50, f: () => { S.ore = 'mager'; }, title: 'Mager malm!', text: '<p>Nu kommer malmen från den nya gången. Den är ljusare och magrare, och du ser den i schaktet.</p><p><b>Den behöver mer kol:</b> ungefär <b>3 malm på 4 kol</b>. Det märks först när de nya lagren når botten.</p>' }] },
+  { title: 'Frostnatten', time: 300, coal: 100, ore: 160, goal: [30, 44, 58], ore0: 'rik', blastMax: 1, hang: true,
+    brief: `<p>Det är januari och kallt. Vattnet i ån kan frysa. Då orkar vattenhjulet inte driva bälgarna fullt.</p><p>Med svagare bläster sjunker lagren långsammare och ugnen blir kallare. <b>Ändra lastningen i tid.</b></p><p>Mål: <b>30 skeppund grått tackjärn</b>.</p>`,
+    events: [{ at: 70, f: () => { S.blastMax = 0.6; S.blast = Math.min(S.blast, 0.6); }, title: 'Isen tar hjulet', text: '<p>Is i hjulrännan! Vattenhjulet går trögt, och blästern orkar nu <b>högst 60 %</b>.</p><p>Mindre luft ger svalare eld. Lägg in <b>mer kol per malm</b> tills isen är borta.</p>' },
+             { at: 190, f: () => { S.blastMax = 1; }, title: 'Isen är bortbruten', text: '<p>Drängarna har hackat loss isen. Blästern kan gå fullt igen.</p>' }] },
+];
+
+// ------------------------------------------------------------- tillstånd
+let S, M, MI;
+function load() { try { return JSON.parse(localStorage.getItem('blasn') || '{}'); } catch (e) { return {}; } }
+function save(d) { try { localStorage.setItem('blasn', JSON.stringify(d)); } catch (e) {} }
+function newGame(i) {
+  MI = i; M = MISSIONS[i];
+  S = { t: 0, run: false, over: false, blast: 0.7, blastMax: M.blastMax, ore: M.ore0, coal: M.coal, oreLeft: M.ore,
+    layers: [], T: 1420, rc: 0.28, ro: 0.28, iron: 6, grey: 6, slag: 3, wear: 10, cold: 0,
+    tapping: false, slagging: false, tackor: [], cur: null, hang: null, events: M.events.map(e => ({ ...e, done: false })),
+    stats: { grey: 0, white: 0, slagged: 0, slips: 0, coalUsed: 0 }, flash: 0, spray: 0 };
+  // schaktet fullt med varvade lager
+  let y = 1;
+  while (y > 0.16) { for (const t of ['K', 'M']) { const h = t === 'K' ? CFG.coalH : CFG.oreH; y -= h; S.layers.unshift({ t, h, y, q: S.ore }); } }
+  S.layers.sort((a, b) => b.y - a.y);
+  for (let k = 0; k < 6; k++) S.tackor.push({ fill: 0, grey: 0, slag: false });
+}
+
+// ------------------------------------------------------------- simulering
+function topY() { return S.layers.length ? S.layers[S.layers.length - 1].y : 1; }
+function charge(t) {
+  if (!S.run) return;
+  if (t === 'K' && S.coal < 1) return say('Kolet är slut!', true);
+  if (t === 'M' && S.oreLeft < 1) return say('Malmen är slut!', true);
+  const h = t === 'K' ? CFG.coalH : CFG.oreH;
+  if (topY() - h < -0.005) return say('Schaktet är fullt upp till gichten. Vänta tills lagren sjunkit.');
+  if (t === 'K') { S.coal--; S.stats.coalUsed++; } else S.oreLeft--;
+  S.layers.push({ t, h, y: topY() - h, q: S.ore, fresh: 1 });
+  S.dump = { t, a: 1 };
+}
+function speed() { return CFG.descent * S.blast; }
+function step(dt) {
+  S.t += dt;
+  for (const e of S.events) if (!e.done && S.t >= e.at) { e.done = true; e.f(); return showCard(e.title, e.text); }
+  const v = speed();
+  // hängning
+  if (M.hang && !S.hang) {
+    const oreHeavy = Math.max(0, S.ro / Math.max(0.05, S.rc) - ORES[S.ore].r0);
+    const p = 0.006 + Math.max(0, S.blast - 0.75) * 0.05 + oreHeavy * 0.03 + (S.ore === 'mager' ? 0.01 : 0);
+    if (Math.random() < p * dt && S.layers.length > 6) {
+      const idx = S.layers.findIndex(l => l.y < 0.5);
+      if (idx > 2) { S.hang = { idx }; say('Beskickningen hänger! Ser du glappet? Stöt loss!', true); }
+    }
+  }
+  // lagren sjunker
+  const hi = S.hang ? S.hang.idx : S.layers.length;
+  for (let i = 0; i < hi; i++) S.layers[i].y += v * dt;
+  // smältning i botten
+  let mc = 0, mo = 0;
+  while (S.layers.length && S.layers[0].y + S.layers[0].h > 1) {
+    const L = S.layers[0], over = L.y + L.h - 1, m = Math.min(over, L.h);
+    L.h -= m; L.y = Math.min(L.y, 1 - L.h);
+    if (L.t === 'K') mc += m / CFG.coalH; else { mo += m / CFG.oreH; melt(m / CFG.oreH, L.q); }
+    if (L.h <= 1e-4) { S.layers.shift(); if (S.hang) S.hang.idx--; }
+    else break;
+  }
+  if (S.hang) {
+    const above = S.layers[S.hang.idx], below = S.layers[S.hang.idx - 1];
+    S.hang.gap = above ? (below ? below.y - (above.y + above.h) : 1 - (above.y + above.h)) : 0;
+    if (!above || S.hang.idx <= 0) S.hang = null;
+    else if (S.hang.gap > 0.24) slip(false);
+  }
+  // värme: kolet som brinner ger värme, malmen tar värme
+  const k = Math.min(1, dt / 8);
+  S.rc += (mc / dt - S.rc) * k; S.ro += (mo / dt - S.ro) * k;
+  const ratio = S.ro / Math.max(0.02, S.rc), r0 = ORES[S.ore].r0;
+  const fuel = clamp(S.rc / (0.3 * S.blast / 0.7 * 0.5 + 0.0001), 0, 1);
+  const fill = 1 - topY();
+  let target = Math.max(1060, 1000 + fuel * (430 - 180 * (ratio - r0)) + 230 * (S.blast - 0.7));
+  if (fill < 0.55) target -= (0.55 - fill) * 500;
+  if (S.iron + S.slag > CFG.tuyere) target -= 160;
+  if (S.tapping && S.iron <= 0.01) target -= 60;
+  S.T += (target - S.T) * Math.min(1, dt / 5);
+  // slitage och frysning
+  if (S.T > CFG.wearT) S.wear += (S.T - CFG.wearT) * 0.02 * dt;
+  if (S.T < CFG.freezeT) S.cold += dt; else S.cold = Math.max(0, S.cold - dt);
+  if (S.cold > CFG.freezeHold) return finish('frozen');
+  if (S.wear >= 100) return finish('wear');
+  // tappning
+  if (S.tapping) {
+    const flow = CFG.tapRate * (S.T < 1260 ? 0.35 : 1) * dt;
+    if (S.iron > 0.01) { const a = Math.min(S.iron, flow), g = S.grey / Math.max(0.001, S.iron); S.iron -= a; S.grey = Math.max(0, S.grey - a * g); pour(a, g); S.flow = 1; }
+    else if (S.slag > 0.01) { S.slag = Math.max(0, S.slag - flow); if (S.cur) S.cur.slag = true; S.spray = 1; if (!S.slagWarn) { S.slagWarn = true; say('Slaggen rinner ut i sandbädden – släpp tappningen! Den tackan blir slaggig.', true); } S.flow = 2; }
+    else { S.spray = 1; S.flow = 0; }
+  } else { S.flow = 0; S.slagWarn = false; if (S.cur && S.cur.fill > 0.5) closeTacka(); }
+  if (S.slagging) { const a = Math.min(S.slag, CFG.slagRate * dt); S.slag -= a; S.sflow = a > 0 ? 1 : 0; } else S.sflow = 0;
+  if (S.coal < 1 && S.layers.length === 0) return finish('time');
+  if (S.t >= M.time) return finish('time');
+}
+function melt(baskets, q) {
+  const o = ORES[q], y = clamp((S.T - 1150) / 230, 0.3, 1);
+  const fe = baskets * o.iron * y; S.iron += fe; if (S.T >= 1380) S.grey += fe;
+  S.slag += baskets * o.slag;
+  if (S.iron + S.slag > CFG.hearthCap) S.slag = Math.max(0, CFG.hearthCap - S.iron);
+}
+function pour(a, greyFrac) {
+  if (!S.cur) { S.cur = S.tackor.find(t => t.fill === 0 && !t.done) || null; if (!S.cur) { S.tackor.forEach(t => { t.fill = 0; t.grey = 0; t.slag = false; t.done = false; }); S.cur = S.tackor[0]; } }
+  const c = S.cur, room = CFG.tackaSize - c.fill, x = Math.min(room, a);
+  c.fill += x; c.grey += x * greyFrac;
+  if (c.fill >= CFG.tackaSize - 1e-6) { closeTacka(); if (a - x > 0) pour(a - x, greyFrac); }
+}
+function closeTacka() {
+  const c = S.cur; if (!c) return; c.done = true;
+  if (c.slag) { S.stats.slagged += c.fill; S.stats.white += c.fill; }
+  else { S.stats.grey += c.grey; S.stats.white += c.fill - c.grey; }
+  S.cur = null;
+}
+function slip(controlled) {
+  if (!S.hang) return;
+  const gap = S.hang.gap || 0;
+  for (let i = S.hang.idx; i < S.layers.length; i++) S.layers[i].y += gap;
+  const drop = (controlled ? 140 : 380) * gap / 0.24 + 10;
+  S.T -= drop; S.hang = null; S.stats.slips++; S.flash = 1;
+  say(controlled ? `Du stötte loss beskickningen. Lite kall malm föll ner (−${Math.round(drop)} °C).` : `Hängningen rasade av sig själv! En stor kall klump föll i härden (−${Math.round(drop)} °C).`, !controlled);
+}
+function poke() { if (!S.run) return; if (S.hang) slip(true); }
+
+// ------------------------------------------------------------- masmästaren (förklarar, löser inte åt dig)
+let sayLock = 0;
+function say(t, bad = false) { $('sayTxt').textContent = t; $('say').classList.toggle('bad', bad); sayLock = 3; }
+function advice() {
+  const r0 = ORES[S.ore].r0, v = speed();
+  // det som smälter inom ~12 s
+  let c = 0, o = 0; for (const L of S.layers) if (L.y + L.h > 1 - v * 12) { if (L.t === 'K') c += L.h / CFG.coalH; else o += L.h / CFG.oreH; }
+  const rUp = o / Math.max(0.3, c), fill = 1 - topY();
+  if (S.cold > 0) return [`Ugnen fryser! Under 1 180 °C stelnar järnet. Höj blästern (verkar direkt) och ladda flera kol i rad – NU.`, true];
+  if (S.hang) return [`Beskickningen hänger (glapp ${Math.round((S.hang.gap || 0) * 100)} %). Stöt loss innan glappet blir stort!`, true];
+  if (S.iron + S.slag > CFG.tuyere) return [`Härden är full upp till formorna – ugnen kvävs! Tappa järn eller släpp slagg.`, true];
+  if (S.iron + S.slag > 30) return [`Härden fylls. Släpp slagg och tappa järnet snart.`, false];
+  if (fill < 0.6 && S.coal > 0) return [`Schaktet håller på att gå tomt – ladda fortare! Ett halvtomt schakt släpper ut värmen.`, true];
+  if (S.T < 1300) return [`Ugnen är kall. Ladda 2–3 kol i rad, och höj blästern om du kan.`, true];
+  if (rUp > r0 + 0.45) return [`Mycket malm är på väg ner (≈ ${rUp.toFixed(1).replace('.', ',')} per kol). Det blir kallt när det når botten – ladda 2–3 kol i rad nu.`, false];
+  if (rUp < r0 - 0.45 && S.T > 1440) return [`Mycket kol är på väg ner – det blir hett och kolet räcker kortare. Ladda ett par extra malm.`, false];
+  if (S.T > 1500) return [`För hett – infodringen slits. Ladda ett par extra malm, eller sänk blästern.`, false];
+  if (S.iron > 14 && !S.tapping) return [`Det finns ${Math.round(S.iron)} skeppund järn i härden. Tappa det – håll in "Tappa järn" och släpp innan det tar slut.`, false];
+  return [S.T >= 1380 ? `Bra gång – grått järn. Lagom med den här malmen: ungefär ${r0 === 1 ? 'en malm per kol' : '3 malm på 4 kol'}.` : `Det blir vitt järn under 1 380 °C. Lite mer kol så blir det grått.`, false];
+}
+
+// ------------------------------------------------------------- ritning
+const cv = $('cv'), g = cv.getContext('2d');
+const VW = 1200, VH = 760;
+let sc = 1, ox = 0, oy = 0;
+function resize() {
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+  const mob = innerWidth < 900, topR = mob ? 150 : 0, botR = mob ? 200 : 175;
+  const availH = innerHeight - topR - botR;
+  sc = Math.min(innerWidth / 1080, availH / 590) * dpr; ox = (cv.width - 1080 * sc) / 2 - 175 * sc; oy = topR * dpr + Math.max(0, (availH * dpr - 590 * sc) / 2) - 105 * sc;
+}
+addEventListener('resize', resize); resize();
+// masugnens geometri (virtuella koordinater)
+const FX = 600, Y0 = 250, Y1 = 560, HB = 640;   // schaktets topp (gicht), smältzon, härdens botten
+function halfW(d) { // schaktets profil: smal gicht, vid "kolsäck", trång rast ner mot härden
+  if (d < 0.62) return 30 + (d / 0.62) * 56;
+  return 86 - ((d - 0.62) / 0.38) * 44;
+}
+const yOf = d => Y0 + d * (Y1 - Y0);
+// stenmönster
+const stone = document.createElement('canvas'); stone.width = 420; stone.height = 420;
+(() => { const s = stone.getContext('2d'); s.fillStyle = '#6d665d'; s.fillRect(0, 0, 420, 420);
+  for (let y = 0; y < 420; y += 22) for (let x = -((y / 22) % 2) * 20; x < 420; x += 40) {
+    const v = 92 + Math.random() * 40; s.fillStyle = `rgb(${v},${v - 6},${v - 14})`; s.fillRect(x + 1, y + 1, 38, 20); } })();
+let wheelA = 0, bell = 0;
+function tcol(T, a = 1) { // glödfärg efter temperatur
+  const k = clamp((T - 1100) / 450, 0, 1);
+  return `rgba(${Math.round(180 + 75 * k)},${Math.round(50 + 170 * k)},${Math.round(10 + 150 * k * k)},${a})`;
+}
+function draw(dt) {
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const sky = g.createLinearGradient(0, 0, 0, cv.height); sky.addColorStop(0, '#2c3a52'); sky.addColorStop(1, '#5b5a62');
+  g.fillStyle = sky; g.fillRect(0, 0, cv.width, cv.height);
+  g.setTransform(sc, 0, 0, sc, ox, oy);
+  // skog i bakgrunden
+  g.fillStyle = '#26302c';
+  for (let i = 0; i < 90; i++) { const x = i * 31 - 700, h = 50 + ((i * 37) % 30); g.beginPath(); g.moveTo(x, 470); g.lineTo(x + 14, 470 - h); g.lineTo(x + 28, 470); g.fill(); }
+  // slänt och mark
+  g.fillStyle = '#4a4a3c'; g.beginPath(); g.moveTo(-900, 230); g.lineTo(330, 238); g.lineTo(470, 650); g.lineTo(-900, 650); g.fill();
+  g.fillStyle = '#e8ecf2'; g.beginPath(); g.moveTo(-900, 228); g.lineTo(330, 236); g.lineTo(334, 246); g.lineTo(-900, 240); g.fill();
+  g.fillStyle = '#3d3a33'; g.fillRect(-900, 640, 3000, 600);
+  g.fillStyle = '#d9dee6'; g.fillRect(-900, 638, 3000, 6);
+  // å med vattenhjul och bälgar (vänster, framför slänten)
+  g.fillStyle = '#2d4258'; g.fillRect(-900, 690, 3000, 40);
+  wheelA += dt * S.blast * 2.2; bell += dt * S.blast * 3.4;
+  const wx = 300, wy = 590;
+  g.save(); g.translate(wx, wy); g.rotate(wheelA); g.strokeStyle = '#5a3d24'; g.lineWidth = 6; g.beginPath(); g.arc(0, 0, 58, 0, Math.PI * 2); g.stroke();
+  for (let i = 0; i < 12; i++) { g.rotate(Math.PI / 6); g.fillStyle = '#6b4a2c'; g.fillRect(-4, -64, 8, 18); g.fillRect(-2, -58, 4, 58); }
+  g.restore();
+  g.fillStyle = '#5a3d24'; g.fillRect(230, 520, 140, 8); // vattenränna
+  // bälgar (kilformade) som pumpar in luft i formorna
+  for (let b = 0; b < 2; b++) {
+    const open = (Math.sin(bell + b * Math.PI) + 1) / 2, bx = 380, by = 545 + b * 26;
+    g.fillStyle = '#5a3d24'; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + 120, by + 6); g.lineTo(bx, by + 10 + open * 14); g.closePath(); g.fill();
+    g.strokeStyle = '#2e2014'; g.lineWidth = 2; g.stroke();
+  }
+  g.fillStyle = '#3a2a1c'; g.fillRect(495, 556, FX - halfW(1) - 495, 10); // rör till forman
+  // masugnen: fyrkantigt stentorn, stympad pyramid
+  g.save(); g.beginPath(); g.moveTo(FX - 190, HB); g.lineTo(FX - 120, 238); g.lineTo(FX + 120, 238); g.lineTo(FX + 190, HB); g.closePath();
+  g.fillStyle = g.createPattern(stone, 'repeat'); g.fill(); g.strokeStyle = '#3a352f'; g.lineWidth = 3; g.stroke(); g.restore();
+  // genomskärning: schaktet
+  g.save(); g.beginPath(); g.moveTo(FX - halfW(0), Y0);
+  for (let d = 0; d <= 1.0001; d += 0.02) g.lineTo(FX - halfW(d), yOf(d));
+  g.lineTo(FX - 42, HB - 6); g.lineTo(FX + 42, HB - 6);
+  for (let d = 1; d >= -0.0001; d -= 0.02) g.lineTo(FX + halfW(d), yOf(d));
+  g.closePath(); g.fillStyle = '#120d0a'; g.fill(); g.clip();
+  // lagren
+  for (const L of S.layers) {
+    const ya = yOf(Math.max(0, L.y)), yb = yOf(Math.min(1, L.y + L.h));
+    if (yb <= ya) continue;
+    g.fillStyle = L.t === 'K' ? '#1f1a17' : ORES[L.q].col; g.fillRect(FX - 100, ya, 200, yb - ya);
+    g.fillStyle = L.t === 'K' ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.18)'; g.fillRect(FX - 100, yb - 1.5, 200, 1.5);
+    if (L.t === 'K') { g.fillStyle = 'rgba(90,80,70,.5)'; for (let x = FX - 90; x < FX + 90; x += 13) g.fillRect(x + ((ya * 7) % 9), ya + (yb - ya) * 0.4, 5, 3); }
+  }
+  // värmen underifrån
+  const gl = g.createLinearGradient(0, yOf(0.45), 0, Y1 + 20); gl.addColorStop(0, tcol(S.T, 0)); gl.addColorStop(1, tcol(S.T, 0.75));
+  g.fillStyle = gl; g.fillRect(FX - 100, yOf(0.45), 200, Y1 - yOf(0.45) + 80);
+  // härden: järn i botten, slagg ovanpå
+  const hH = HB - 6 - Y1, ironH = hH * S.iron / CFG.hearthCap, slagH = hH * S.slag / CFG.hearthCap;
+  g.fillStyle = tcol(S.T + 80, 1); g.fillRect(FX - 60, HB - 6 - ironH, 120, ironH);
+  g.fillStyle = 'rgba(190,120,40,.9)'; g.fillRect(FX - 60, HB - 6 - ironH - slagH, 120, slagH);
+  g.restore();
+  // formans nivå
+  const ty = HB - 6 - hH * CFG.tuyere / CFG.hearthCap;
+  g.strokeStyle = 'rgba(255,255,255,.5)'; g.setLineDash([4, 4]); g.lineWidth = 1; g.beginPath(); g.moveTo(FX - 70, ty); g.lineTo(FX + 70, ty); g.stroke(); g.setLineDash([]);
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.font = '11px system-ui'; g.fillText('formorna', FX + 76, ty + 4);
+  // smälter snart-linje
+  const v = speed(), dSoon = 1 - v * 12;
+  if (dSoon > 0.1) { const ys = yOf(dSoon); g.strokeStyle = 'rgba(140,180,255,.6)'; g.setLineDash([6, 5]); g.beginPath(); g.moveTo(FX - halfW(dSoon) - 4, ys); g.lineTo(FX + halfW(dSoon) + 4, ys); g.stroke(); g.setLineDash([]);
+    g.fillStyle = 'rgba(180,205,255,.9)'; g.fillText('smälter inom 12 s ↓', FX + halfW(dSoon) + 10, ys + 4); }
+  // hängningens glapp
+  if (S.hang && S.hang.gap > 0.005) { const a = S.layers[S.hang.idx]; if (a) { const y1 = yOf(a.y + a.h), y2 = yOf(a.y + a.h + S.hang.gap);
+    g.fillStyle = `rgba(239,107,91,${0.25 + 0.2 * Math.sin(S.t * 8)})`; g.fillRect(FX - halfW(a.y + a.h), y1, halfW(a.y + a.h) * 2, y2 - y1);
+    g.fillStyle = '#ffb3a8'; g.font = 'bold 13px system-ui'; g.fillText('⚠ hänger – glapp', FX + halfW(a.y) + 10, (y1 + y2) / 2 + 4); } }
+  // mjuka konturlinjer runt schaktet
+  g.strokeStyle = '#4b2a1a'; g.lineWidth = 5; g.beginPath(); for (let d = 0; d <= 1.0001; d += 0.02) g.lineTo(FX - halfW(d) - 2, yOf(d)); g.lineTo(FX - 44, HB - 4); g.stroke();
+  g.beginPath(); for (let d = 0; d <= 1.0001; d += 0.02) g.lineTo(FX + halfW(d) + 2, yOf(d)); g.lineTo(FX + 44, HB - 4); g.stroke();
+  // uppsättningshus på toppen + bro från slänten
+  g.fillStyle = '#5a3d24'; g.fillRect(330, 232, FX - 120 - 330, 8); for (let x = 340; x < FX - 130; x += 30) g.fillRect(x, 240, 5, 30);
+  g.fillStyle = '#7b2a1e'; g.fillRect(FX - 140, 160, 120, 78); g.fillRect(FX + 40, 160, 100, 78);
+  g.fillStyle = '#4a3a30'; g.beginPath(); g.moveTo(FX - 155, 162); g.lineTo(FX, 112); g.lineTo(FX + 155, 162); g.closePath(); g.fill();
+  g.strokeStyle = '#3d1510'; g.lineWidth = 2; for (let x = FX - 136; x < FX - 20; x += 14) { g.beginPath(); g.moveTo(x, 162); g.lineTo(x, 238); g.stroke(); }
+  // gichtlåga
+  const fl = clamp((S.T - 1150) / 350, 0.15, 1);
+  for (let i = 0; i < 3; i++) { g.fillStyle = tcol(S.T - 150 + i * 60, 0.35 + 0.15 * Math.sin(S.t * 9 + i)); g.beginPath(); g.ellipse(FX + Math.sin(S.t * 5 + i) * 4, Y0 - 12 - i * 10 * fl, 18 - i * 4, 22 * fl + 6, 0, 0, Math.PI * 2); g.fill(); }
+  // uppsättaren tömmer korgen
+  g.fillStyle = '#2a2420'; g.fillRect(FX - 70, 205, 10, 27); g.beginPath(); g.arc(FX - 65, 199, 6, 0, Math.PI * 2); g.fill();
+  if (S.dump && S.dump.a > 0) { S.dump.a -= dt * 2.5; g.fillStyle = S.dump.t === 'K' ? '#1f1a17' : ORES[S.ore].col;
+    for (let i = 0; i < 9; i++) g.fillRect(FX - 40 + i * 9, Y0 - 30 + (1 - S.dump.a) * 30 + (i % 3) * 4, 6, 6); }
+  // tappning: rännor ut i sandbädden till höger (gjuthuset)
+  g.fillStyle = '#b39a74'; g.fillRect(FX + 150, 628, 470, 12);
+  g.fillStyle = '#1a120c'; g.fillRect(FX + 44, HB - 14, 150, 9); g.fillRect(FX + 60, ty + 4, 130, 7);
+  const bx = FX + 250;
+  for (let i = 0; i < S.tackor.length; i++) {
+    const t = S.tackor[i], x = bx + i * 62;
+    g.fillStyle = '#7d6a50'; g.fillRect(x, 630, 50, 8);
+    if (t.fill > 0) { g.fillStyle = t.slag ? '#7a5a30' : t.done ? (t.grey / t.fill > 0.6 ? '#6d7078' : '#c8c4bc') : tcol(1450, 1); g.fillRect(x, 630, 50 * t.fill / CFG.tackaSize, 8); }
+  }
+  g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '11px system-ui'; g.fillText('sandbädden – tackor', bx, 656);
+  if (S.flow) { g.strokeStyle = S.flow === 2 ? '#c88a3a' : tcol(1480, 1); g.lineWidth = 5; g.beginPath(); g.moveTo(FX + 44, HB - 10); g.lineTo(FX + 196, HB - 10); g.quadraticCurveTo(FX + 215, HB - 9, FX + 225, 632); g.lineTo(bx + 62 * (S.cur ? S.tackor.indexOf(S.cur) : 0) + 10, 632); g.stroke(); }
+  if (S.spray > 0) { S.spray -= dt * 3; g.fillStyle = 'rgba(255,200,120,.9)'; for (let i = 0; i < 16; i++) g.fillRect(FX + 196 + Math.random() * 40, HB - 40 + Math.random() * 35, 3, 3); }
+  // slaggflöde till vagnen
+  g.fillStyle = '#4a3a2a'; g.fillRect(FX + 196, 598, 46, 26); g.fillStyle = '#222'; g.beginPath(); g.arc(FX + 206, 626, 5, 0, 7); g.arc(FX + 232, 626, 5, 0, 7); g.fill();
+  if (S.sflow) { g.strokeStyle = 'rgba(210,140,50,.95)'; g.lineWidth = 4; g.beginPath(); g.moveTo(FX + 60, ty + 8); g.lineTo(FX + 192, ty + 8); g.lineTo(FX + 210, 600); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText('slaggvagn', FX + 192, 592); g.fillText('tapphål →', FX + 112, HB - 18);
+  // blixt vid ras
+  if (S.flash > 0) { S.flash -= dt * 2; g.fillStyle = `rgba(120,160,255,${S.flash * 0.25})`; g.fillRect(FX - 100, Y0, 200, HB - Y0); }
+}
+
+// ------------------------------------------------------------- UI
+function tword(T) { return T < 1200 ? 'fryser!' : T < 1300 ? 'kall' : T < 1380 ? 'sval – vitt järn' : T <= 1490 ? 'bra' : 'för het'; }
+function ui() {
+  $('goal').textContent = `${fmt(S.stats.grey)} / ${M.goal[0]} skp`;
+  $('goalBar').style.width = `${clamp(S.stats.grey / M.goal[0], 0, 1) * 100}%`;
+  const left = Math.max(0, M.time - S.t); $('time').textContent = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+  $('coalLeft').textContent = `${S.coal} korgar`; $('oreLeft').textContent = `${S.oreLeft} korgar · ${ORES[S.ore].name.toLowerCase()}`;
+  $('wear').textContent = `${Math.round(S.wear)} %`;
+  $('temp').textContent = Math.round(S.T); const tw = tword(S.T); $('tword').textContent = tw;
+  $('tword').style.color = S.T < 1300 || S.T > 1500 ? 'var(--bad)' : S.T < 1380 ? 'var(--warn)' : 'var(--ok)';
+  $('tmark').style.left = `${clamp((S.T - 1100) / 460, 0, 1) * 100}%`;
+  $('ratioNow').textContent = (S.ro / Math.max(0.02, S.rc)).toFixed(2).replace('.', ',');
+  $('hearthTxt').textContent = `${Math.round(S.iron)} järn · ${Math.round(S.slag)} slagg`;
+  $('blastTxt').textContent = `${Math.round(S.blast * 100)} %${S.blastMax < 1 ? ` (max ${Math.round(S.blastMax * 100)})` : ''}`;
+  $('bPoke').disabled = !S.hang; $('bPoke').classList.toggle('pulse', !!S.hang);
+  $('bCoal').disabled = S.coal < 1; $('bOre').disabled = S.oreLeft < 1;
+  $('bTap').classList.toggle('on', S.tapping); $('bSlag').classList.toggle('on', S.slagging);
+  if (sayLock > 0) return; const [t, bad] = advice(); if ($('sayTxt').textContent !== t) { $('sayTxt').textContent = t; } $('say').classList.toggle('bad', bad);
+}
+function showCard(title, html) { S.run = false; $('cTitle').textContent = title; $('cText').innerHTML = html; $('card').classList.remove('hidden'); }
+$('cGo').onclick = () => { $('card').classList.add('hidden'); S.run = true; };
+function finish(why) {
+  if (S.over) return; S.over = true; S.run = false; S.tapping = S.slagging = false; closeTacka();
+  const g0 = S.stats.grey; let st = why === 'time' ? (g0 >= M.goal[2] ? 3 : g0 >= M.goal[1] ? 2 : g0 >= M.goal[0] ? 1 : 0) : 0;
+  const d = load(); d[MI] = Math.max(d[MI] || 0, st); save(d);
+  $('eTitle').textContent = why === 'frozen' ? 'Härden frös' : why === 'wear' ? 'Infodringen brann igenom' : st ? 'Skiftet är slut – bra jobbat!' : 'Skiftet är slut';
+  $('eStars').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
+  const reason = why === 'frozen' ? `<p>Härden låg under 1 180 °C för länge och järnet stelnade. Det kom för mycket malm på för lite kol${S.stats.slips ? ', och hängningar släppte ner kall beskickning' : ''}. Titta på lagren som är på väg ner – de avgör värmen om en stund.</p>`
+    : why === 'wear' ? '<p>Ugnen gick för hett för länge, och infodringen smälte. Mer malm per kol håller nere värmen och ger mer järn.</p>'
+    : st ? '' : `<p>Du behövde ${M.goal[0]} skeppund grått tackjärn. Tips: håll härden över 1 380 °C, och tappa ofta så att järnet hinner komma ut.</p>`;
+  $('eText').innerHTML = reason + `<table><tr><td>Grått tackjärn (mål ${M.goal.join(' / ')})</td><td class="r"><b>${fmt(g0)} skp</b></td></tr><tr><td>Vitt tackjärn</td><td class="r">${fmt(S.stats.white)} skp</td></tr><tr><td>Slaggiga tackor</td><td class="r">${fmt(S.stats.slagged)} skp</td></tr><tr><td>Kol använt</td><td class="r">${S.stats.coalUsed} korgar</td></tr><tr><td>Hängningar</td><td class="r">${S.stats.slips}</td></tr></table>`;
+  $('eNext').classList.toggle('hidden', !(st > 0 && MI < MISSIONS.length - 1));
+  $('end').classList.remove('hidden');
+}
+function menu() {
+  const d = load();
+  $('misList').innerHTML = MISSIONS.map((m, i) => { const locked = i > 0 && !(d[i - 1] > 0); return `<button class="mis" data-i="${i}" ${locked ? 'disabled' : ''}><div><b>${i + 1}. ${m.title}</b><span>${locked ? '🔒 Klara förra uppdraget först' : `Mål: ${m.goal[0]} skp grått tackjärn · ${Math.round(m.time / 60)} min`}</span></div><span class="stars">${'★'.repeat(d[i] || 0)}${'☆'.repeat(3 - (d[i] || 0))}</span></button>`; }).join('')
+    + `<button class="mis" disabled><div><b>4. Bygg ut bruket</b><span>🔒 Kommer: kolhus, damm, rostugn – mellan skiften</span></div></button>`;
+  $('misList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => openBrief(+b.dataset.i));
+  $('menu').classList.remove('hidden');
+}
+function openBrief(i) {
+  newGame(i); $('menu').classList.add('hidden'); $('end').classList.add('hidden');
+  $('bNo').textContent = `Uppdrag ${i + 1}`; $('bTitle').textContent = M.title; $('bText').innerHTML = M.brief;
+  $('misNo').textContent = `Uppdrag ${i + 1}`; $('misTitle').textContent = M.title;
+  $('brief').classList.remove('hidden'); ui();
+}
+$('bGo').onclick = () => { $('brief').classList.add('hidden'); S.run = true; };
+$('eRetry').onclick = () => openBrief(MI);
+$('eNext').onclick = () => openBrief(MI + 1);
+$('eMenu').onclick = () => { $('end').classList.add('hidden'); menu(); };
+
+// kontroller: klick, hålla in, tangenter
+$('bCoal').onclick = () => charge('K'); $('bOre').onclick = () => charge('M');
+$('bBm').onclick = () => { S.blast = clamp(Math.round((S.blast - 0.05) * 20) / 20, 0.3, S.blastMax); };
+$('bBp').onclick = () => { S.blast = clamp(Math.round((S.blast + 0.05) * 20) / 20, 0.3, S.blastMax); };
+$('bPoke').onclick = poke;
+function holdBtn(el, key) {
+  const on = e => { e.preventDefault(); if (S.run) S[key] = true; }, off = () => { S[key] = false; };
+  el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointerleave', off); el.addEventListener('pointercancel', off);
+}
+holdBtn($('bTap'), 'tapping'); holdBtn($('bSlag'), 'slagging');
+addEventListener('keydown', e => {
+  if (e.repeat && !'kmKM'.includes(e.key)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'k' || k === 'a') charge('K'); else if (k === 'm' || k === 'd') charge('M');
+  else if (k === 'j' && S.run) S.tapping = true; else if (k === 's' && S.run) S.slagging = true;
+  else if (k === ' ') { e.preventDefault(); poke(); }
+  else if (k === 'arrowup' || k === '+') $('bBp').click(); else if (k === 'arrowdown' || k === '-') $('bBm').click();
+});
+addEventListener('keyup', e => { const k = e.key.toLowerCase(); if (k === 'j') S.tapping = false; if (k === 's') S.slagging = false; });
+
+// ------------------------------------------------------------- loop
+let last = performance.now(), uiT = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (S.run && !S.over) { const n = Math.ceil(dt * (window.__ts || 1) / 0.02); for (let i = 0; i < n && S.run && !S.over; i++) step(dt * (window.__ts || 1) / n); }
+  if (sayLock > 0) sayLock -= dt;
+  draw(dt);
+  uiT += dt; if (uiT > 0.1) { uiT = 0; ui(); }
+}
+newGame(0); menu(); requestAnimationFrame(frame);
+window.__b = { get S() { return S; }, charge, poke, openBrief, MISSIONS, CFG, advice, finish };
+</script>
+</body>
+</html>
