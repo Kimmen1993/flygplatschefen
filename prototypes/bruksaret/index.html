@@ -111,7 +111,38 @@
   td { padding: 5px 4px; border-bottom: 1px solid rgba(255,255,255,.07); }
   td.r { text-align: right; font-variant-numeric: tabular-nums; }
 
+
+  #coach { position: fixed; top: calc(70px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 6; width: min(440px, calc(100% - 620px)); min-width: 300px; padding: 13px 16px 12px; font-family: system-ui; border-color: rgba(140,180,255,.55); box-shadow: 0 6px 30px rgba(0,0,0,.5); }
+  #coach .ct { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; display: flex; justify-content: space-between; }
+  #coach .ct a { color: var(--muted); cursor: pointer; text-decoration: underline; text-transform: none; letter-spacing: 0; }
+  #coach h2 { margin: 3px 0 5px; font: 700 18px Georgia, serif; }
+  #coach p { margin: 5px 0; font-size: 13.5px; color: #e9e1d4; }
+  #coach ul { margin: 5px 0; padding-left: 18px; font-size: 13.5px; color: #e9e1d4; }
+  #coach .do { margin-top: 7px; padding: 6px 9px; border-radius: 7px; background: rgba(140,180,255,.14); color: #dfe8ff; font-size: 13.5px; }
+  #coach .do.ok { background: rgba(124,207,138,.18); color: #d9f5de; }
+  .hl { outline: 3px solid #8cb4ff; outline-offset: 2px; border-radius: 8px; animation: hlp 1.1s infinite; }
+  @keyframes hlp { 50% { outline-color: rgba(140,180,255,.25); } }
+  .st.locked { opacity: .4; }
+  .st.locked > .hd { cursor: default; }
+  #todo .item { padding: 5px 8px; margin: 4px 0; border-radius: 7px; background: rgba(255,240,220,.05); border-left: 3px solid var(--ok); }
+  #todo .item.bad { border-left-color: var(--bad); background: rgba(239,107,91,.1); }
+  #todo .item b { display: block; font-size: 13px; }
+  #todo .item span { font-size: 11.5px; color: var(--muted); }
+  .chain { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; font-family: system-ui; }
+  .chain .card { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: rgba(255,240,220,.05); border-left: 4px solid var(--ok); }
+  .chain .card.warn { border-left-color: var(--warn); } .chain .card.bad { border-left-color: var(--bad); background: rgba(239,107,91,.08); }
+  .chain .card.wide { grid-column: 1 / 3; }
+  .chain .card h4 { margin: 0; font: 700 15px Georgia, serif; display: flex; justify-content: space-between; gap: 6px; }
+  .chain .card h4 span { font: 600 12.5px system-ui; color: var(--ink); }
+  .chain .card .st2 { font-size: 12.5px; margin-top: 2px; }
+  .chain .card .why { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .chain .arr { text-align: center; color: var(--fire); font-size: 13px; padding: 2px 0; }
+  .chain .arr.wide { grid-column: 1 / 3; }
+  .intro-chain { font: 13px system-ui; color: #e3d8c8; text-align: center; background: rgba(255,240,220,.05); border-radius: 9px; padding: 9px; line-height: 1.7; }
+  .intro-chain b { color: var(--ink); }
+
   @media (max-width: 1000px) {
+    #coach { top: auto; bottom: calc(50vh + 8px); width: calc(100% - 16px); min-width: 0; }
     #left, #right { width: 48vw; max-height: 48vh; top: auto; bottom: calc(8px + env(safe-area-inset-bottom)); }
     #log { bottom: auto; top: 64px; width: calc(100% - 16px); }
   }
@@ -130,6 +161,7 @@
     <button class="btn" data-sp="2">2×</button>
     <button class="btn" data-sp="4">4×</button>
   </div>
+  <button class="btn" id="chainBtn">📖 Så hänger det ihop</button>
 </div>
 
 <div id="left">
@@ -143,12 +175,12 @@
         <div class="btns"><button class="btn fire" id="lightBtn">Tänd masugnen</button><button class="btn" id="relineBtn">Mura om (15 dagar, 600 daler)</button></div>
       </div>
       <div id="fOn">
-        <div class="tbig"><b id="temp">—</b><span>°C i härden</span><span id="trend"></span></div>
+        <div class="tbig" id="tempBox"><b id="temp">—</b><span>°C i härden</span><span id="trend"></span></div>
         <div class="tbar"><i id="tmark"></i></div>
         <div class="tscale"><span>1100 fryser</span><span>bra 1330–1480</span><span>1560</span></div>
         <div class="read" id="flame"></div>
-        <div class="row" style="margin-top:6px"><span>Prognos om ≈ ett dygn</span><b id="fcast">—</b></div>
-        <div style="margin:6px 0;padding:7px 9px;border-radius:8px;background:rgba(140,180,255,.1);border:1px solid rgba(140,180,255,.3)"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Masmästaren säger</div><div id="advice" style="font-size:13px;color:#dfe8ff"></div><div class="btns" style="margin-top:5px"><button class="btn sm" id="followBtn">Sätt malmsats</button></div></div>
+        <div class="row" id="rowFcast" style="margin-top:6px"><span>Prognos om ≈ ett dygn</span><b id="fcast">—</b></div>
+        <div id="advBox" style="margin:6px 0;padding:7px 9px;border-radius:8px;background:rgba(140,180,255,.1);border:1px solid rgba(140,180,255,.3)"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Masmästaren säger</div><div id="advice" style="font-size:13px;color:#dfe8ff"></div><div class="btns" style="margin-top:5px"><button class="btn sm" id="followBtn">Sätt malmsats</button></div></div>
         <div class="sect">
           <div id="shaftWrap">
             <div id="shaft"></div>
@@ -160,16 +192,16 @@
             </div>
           </div>
         </div>
-        <div class="sect">
+        <div class="sect" id="sectHearth">
           <div class="row"><span>Härden (järn + slagg)</span><b id="hearthTxt">0 %</b></div>
           <div class="meter"><i id="hearth" style="background:var(--fire);width:0"></i><span class="mark" style="left:92%"></span></div>
           <div class="row"><span>Infodringens slitage</span><b id="wearTxt">0 %</b></div>
         </div>
-        <div class="ctl"><label>Malmsats <span id="ratioTxt"></span></label><input type="range" id="ratio" min="0.6" max="1.8" step="0.05" value="1.0"></div>
-        <div class="ctl"><label>Bläster <span id="blastTxt"></span></label><input type="range" id="blast" min="0.2" max="1" step="0.05" value="0.8"></div>
+        <div class="ctl" id="ctlRatio"><label>Malmsats <span id="ratioTxt"></span></label><input type="range" id="ratio" min="0.6" max="1.8" step="0.05" value="1.0"></div>
+        <div class="ctl" id="ctlBlast"><label>Bläster <span id="blastTxt"></span></label><input type="range" id="blast" min="0.2" max="1" step="0.05" value="0.8"></div>
         <div class="btns">
           <button class="btn fire" id="tapBtn">Tappa härden</button>
-          <label class="small" style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="autoTap" checked>Masmästaren tappar själv</label>
+          <label class="small" id="autoTapL" style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="autoTap" checked>Masmästaren tappar själv</label>
           <button class="btn" id="pokeBtn" disabled>Stöt loss</button>
           <button class="btn" id="blowDownBtn">Blås ner</button>
         </div>
@@ -206,16 +238,19 @@
 </div>
 
 <div id="right" class="panel">
+  <div id="todo"><h3>Att göra nu</h3><div id="todoList"></div></div>
+  <div class="sect" id="moneyBox">
   <h3>Bruket</h3>
   <div class="row"><span>Kassa</span><b id="money"></b></div>
   <div class="row small"><span id="costTxt"></span></div>
+  </div>
   <div class="sect">
     <h3>Lager</h3>
     <div class="row"><span>Kol i kolhuset</span><b id="coal"></b></div>
     <div class="row small"><span id="coalForest"></span></div>
     <div class="row"><span>Rostad malm</span><b id="ore"></b></div>
     <div class="row"><span>Tackjärn</span><b id="pig"></b></div>
-    <div class="row"><span>Stångjärn</span><b id="bar"></b></div>
+    <div class="row" id="rowBar"><span>Stångjärn</span><b id="bar"></b></div>
   </div>
   <div class="sect">
     <h3>Vattnet i ån</h3>
@@ -236,16 +271,26 @@
 <div id="intro" class="modal">
   <div class="panel">
     <h1>Bruksåret 1780–81</h1>
-    <p class="small">Känslotest · ett helt år med masugnen, kolningen och hammarsmedjan</p>
-    <p>Det är juni. Förra årets blåsning är slut, kolhuset är nästan tomt och det finns lite tackjärn kvar. Ett bruksår hänger ihop: <b>det du gör på sommaren avgör om vintern går att klara.</b></p>
-    <ul>
-      <li><b>🌲 Kolningen:</b> res milor ute i skogsskiftena, en per kolare. En mila kolar i ett par veckor. När röken slår igenom måste den <b>tätas</b>, annars brinner kolet upp. Kolet körs in med häst, och det går tre gånger fortare på vinterns slädföre.</li>
-      <li><b>🔥 Masugnen:</b> tänd den när du har kol nog. Den drar mycket kol, så den brukar blåsa på vintern. Sedan sköter du den som förra gången. Ett slitet foder måste muras om innan nästa blåsning.</li>
-      <li><b>🔨 Smedjan:</b> gör stångjärn av tackjärnet året runt. Den behöver vatten, och ån är låg på sommaren. Du väljer om masugnen eller smedjan ska få vattnet först.</li>
-      <li><b>Kontrakt</b> dyker upp under året. Stångjärnet ska finnas i lager på leveransdagen.</li>
-    </ul>
-    <p class="small">Tryck på en station i listan till vänster för att öppna den och flyga dit. Röda märken betyder att något behöver dig. Siffrorna är förenklade, men händelserna bygger på hur verkliga bruk fungerade.</p>
-    <p style="text-align:center;margin-top:12px"><button class="btn big" id="startBtn">Börja bruksåret</button></p>
+    <p class="small">Prototyp · ett år på ett svenskt järnbruk</p>
+    <p>Du är brukspatron. Ditt bruk gör <b>stångjärn</b> av malm och kol, och säljer det till kunder. Allt hänger ihop i en kedja, och om en länk stannar så stannar allt efter den:</p>
+    <div class="intro-chain">🌲 <b>Skogen</b> → milor ger <b>kol</b> &nbsp;+&nbsp; ⛏ <b>gruvan</b> ger <b>malm</b><br>↓<br>🔥 <b>Masugnen</b> smälter dem till <b>tackjärn</b><br>↓<br>🔨 <b>Smedjan</b> hamrar tackjärnet till <b>stångjärn</b><br>↓<br>💰 <b>Kunderna</b> betalar → löner, foder och kol</div>
+    <p>Målet: <b>leverera kontrakten i tid och tjäna så mycket som möjligt under året.</b></p>
+    <p class="small" id="introNote">Första gången? Börja med lärotiden. Masmästaren visar en sak i taget, och du kan inte förstöra något.</p>
+    <div class="choices">
+      <button class="choice" id="tutBtn"><b>🎓 Lärotiden – lär dig bruket (ca 10 min)</b><span>Rekommenderas första gången. Masugnen brinner redan, och du lär dig en station i taget.</span></button>
+      <button class="choice" id="startBtn"><b>Börja bruksåret direkt</b><span>Juni 1780: kall masugn, nästan tomt kolhus. Kola på sommaren, blås på vintern.</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="coach" class="panel hidden"><div class="ct"><span id="coachStep"></span><a id="coachSkip">hoppa över lärotiden</a></div><h2 id="coachTitle"></h2><div id="coachText"></div><div class="btns" id="coachBtns"></div></div>
+
+<div id="chain" class="modal hidden">
+  <div class="panel">
+    <h1>Så hänger bruket ihop</h1>
+    <p class="small">Uppifrån och ner: varje station behöver det som kommer ovanför. Färgen visar läget just nu: grön = bra, gul = håll koll, röd = gör något.</p>
+    <div id="chainBody"></div>
+    <p style="text-align:center;margin-top:12px"><button class="btn big" id="chainClose">Tillbaka till bruket</button></p>
   </div>
 </div>
 

@@ -252,7 +252,7 @@ function log(text, kind = '') {
   $('log').prepend(el); while ($('log').children.length > 4) $('log').lastChild.remove();
   setTimeout(() => el.classList.add('out'), 7000); setTimeout(() => el.remove(), 7900);
 }
-function hint(id, text) { if (S.hint[id]) return; S.hint[id] = true; log('💡 ' + text, 'tip'); }
+function hint(id, text) { if (S.tut || S.hint[id]) return; S.hint[id] = true; log('💡 ' + text, 'tip'); }
 
 // ================================================================ vatten & väder
 function waterShare() {
@@ -400,6 +400,7 @@ function furnaceStep(dd) {
   if (S.coal < 1 && S.shaft.length === 0) { blowDown('Kolet tog slut – masugnen fick blåsas ner.'); return; }
   if (S.coal < 1) hint('nocoal', 'Kolhuset är tomt! Ugnen svalnar när de sista satserna smält.');
   S.T += (targetT(bl) - S.T) * Math.min(1, dd * 3.2);
+  if (S.tut && S.T < 1240) S.T = 1240;   // lärotiden: masmästaren räddar ugnen innan den fryser
   if (S.T < 1265 && !S.warnedCold) {
     S.warnedCold = true;
     openEvent('Masugnen håller på att frysa!', `<p>Härden är nere i ${Math.round(S.T)} °C. Under ungefär 1 180 °C stelnar järnet, och då måste härden brytas upp – 8 dagars stillestånd.</p><p><b>Gör så här:</b></p><ul><li><b>Höj blästern</b> – det värmer ugnen direkt.</li><li><b>Sänk malmsatsen</b> (mer kol per sats) till ungefär ${recRatio().toFixed(2).replace('.', ',')}. Det verkar när satserna når härden, om ungefär ett halvt dygn.</li><li>Håll ett öga på <b>prognosen</b> i masugnspanelen – den visar vad som är på väg.</li></ul>`, [{ t: 'Uppfattat', d: 'Spelet fortsätter.', f: () => { if (S.open !== 'F') openStation('F'); } }]);
@@ -412,7 +413,7 @@ function furnaceStep(dd) {
     if (S.tapping <= 0) {
       const iron = S.hearthIron, q = iron > 0 ? S.hearthQ / iron : 1;
       S.pigQ = (S.pigQ * S.pig + q * iron) / Math.max(0.001, S.pig + iron); S.pig += iron; S.stats.produced += iron;
-      S.hearth = 4; S.hearthIron = 0; S.hearthQ = 0; S.tapping = 0; barCool = 1;
+      S.hearth = 4; S.hearthIron = 0; S.hearthQ = 0; S.tapping = 0; barCool = 1; S.stats.taps = (S.stats.taps || 0) + 1;
       log(`Tappat ${Math.round(iron)} skp ${q > 0.95 ? 'grått' : q > 0.85 ? 'halvgrått' : 'vitt'} tackjärn.`, q > 0.95 ? 'good' : 'warn');
     }
   }
@@ -485,6 +486,7 @@ function removeMila(m) { scene.remove(m.group); S.milor.splice(S.milor.indexOf(m
 // ================================================================ smedjan
 function smithStep(dd) {
   S.money -= CFG.wageSmith * dd;
+  if (S.tut && S.tut.locked.has('S')) { S.smithRate = 0; return; }
   if (S.broken > 0) { S.broken -= dd; if (S.broken <= 0 && S.repairing) { S.broken = 0; S.repairing = false; log('Nytt hammarskaft på plats – smedjan går igen.', 'good'); } else if (!S.repairing) S.broken = Math.max(S.broken, 0.01); S.smithRate = 0; return; }
   const w = waterShare().S;
   const cap = CFG.hammerCap * w * S.takt * dd;
@@ -542,7 +544,7 @@ const EVENTS = [
 ];
 for (const e of EVENTS) e.day = e.at[0] + Math.random() * (e.at[1] - e.at[0]);
 function checkEvents() {
-  if (!$('event').classList.contains('hidden')) return;
+  if (S.tut || !$('event').classList.contains('hidden')) return;
   for (const c of S.contracts) if (!c.done && S.day >= c.due) { settle(c); return; }
   for (const c of CONTRACT_OFFERS) if (!c.offered && S.day >= c.day) { c.offered = true; offerContract(c); return; }
   for (const e of EVENTS) {
@@ -623,6 +625,7 @@ const STATION_VIEW = {
 };
 let fly = null;
 function openStation(k) {
+  if (S.tut && S.tut.locked.has(k)) return;
   S.open = S.open === k ? null : k;
   for (const id of ['F', 'K', 'S']) $('st' + id).classList.toggle('closed', S.open !== id);
   if (S.open === 'K') {
@@ -651,10 +654,140 @@ $('horseMinus').onclick = () => { S.horses = Math.max(0, S.horses - 1); };
 document.querySelectorAll('[data-takt]').forEach(b => b.onclick = () => { S.takt = +b.dataset.takt; document.querySelectorAll('[data-takt]').forEach(x => x.classList.toggle('on', x === b)); });
 document.querySelectorAll('[data-prio]').forEach(b => b.onclick = () => { S.prio = b.dataset.prio; document.querySelectorAll('[data-prio]').forEach(x => x.classList.toggle('on', x === b)); });
 $('repairBtn').onclick = () => { if (S.broken > 0 && !S.repairing) { S.repairing = true; S.broken = 3; S.money -= 60; log('Smeden hämtar ett nytt hammarskaft – 3 dagar, 60 daler.'); } };
-$('sellBtn').onclick = () => { const n = Math.min(50, Math.floor(S.bar)); if (n <= 0) return; S.bar -= n; S.money += n * S.price; log(`Sålde ${n} skp stångjärn för ${fmtN(n * S.price)} daler.`); };
+$('sellBtn').onclick = () => { const n = Math.min(50, Math.floor(S.bar)); if (n <= 0) return; S.bar -= n; S.money += n * S.price; log(`Sålde ${n} skp stångjärn för ${fmtN(n * S.price)} daler.`); S.stats.sold = (S.stats.sold || 0) + 1; };
 $('sellPigBtn').onclick = () => { const n = Math.min(50, Math.floor(S.pig)); if (n <= 0) return; S.pig -= n; S.money += n * CFG.pigPrice; log(`Sålde ${n} skp tackjärn till grannbruket för ${fmtN(n * CFG.pigPrice)} daler.`); };
 $('buyCoalBtn').onclick = () => { S.money -= 40 * CFG.coalBuy; S.coal += 40; log(`Köpte 40 lass kol av bönderna för ${40 * CFG.coalBuy} daler.`); };
-$('startBtn').onclick = () => { $('intro').classList.add('hidden'); S.running = true; openStation('K'); setTimeout(() => hint('start', 'Börja med kolningen: res milor i skiftena. Masugnen behöver mycket kol till vintern.'), 1200); };
+$('startBtn').onclick = () => { $('intro').classList.add('hidden'); S.running = true; openStation('K'); setTimeout(() => hint('start', 'Börja med kolningen: res milor i skogsskiftena. Masugnen behöver mycket kol till vintern. Rutan "Att göra nu" till höger säger alltid vad som är viktigast.'), 1200); };
+$('tutBtn').onclick = startTut;
+if (/[?&]ar\b/.test(location.search)) { $('introNote').textContent = 'Lärotiden är klar. Nu gäller det på riktigt.'; $('tutBtn').classList.add('hidden'); }
+
+// ================================================================ att göra nu
+function kolTotal() { return S.coal + LOTS.reduce((a, l) => a + l.waiting, 0) + S.milor.filter(m => m.phase !== 'KLAR').length * CFG.milaYield; }
+function todos() {
+  const out = [];
+  for (const m of S.milor) if (m.fire || (m.phase === 'KOL' && m.drag >= 60)) { out.push({ t: `Täta milan på ${LOTS[m.lot].name}!`, w: 'Röken slår igenom – annars brinner kolet upp. Tryck på milans skylt.', bad: true }); break; }
+  const fc = forecastT();
+  if (S.fOn && S.frozen <= 0 && (S.T < 1300 || (fc !== null && (fc < 1320 || fc > 1500)) || S.hanging || (!S.autoTap && S.hearth > 80))) out.push({ t: 'Masugnen behöver dig', w: advice(), bad: true });
+  if (S.broken > 0 && !S.repairing) out.push({ t: 'Byt hammarskaftet i smedjan', w: 'Smedjan står still tills det är lagat.', bad: true });
+  const c = S.contracts.filter(c => !c.done).sort((a, b) => a.due - b.due)[0];
+  if (c && S.bar < c.amount) {
+    const left = Math.ceil(c.due - S.day), needPig = (c.amount - S.bar) / (CFG.barYield * S.pigQ);
+    out.push({ t: `Kontrakt: ${fmtN(S.bar)} av ${c.amount} skp stångjärn`, w: `${left} dagar kvar till leveransen (${c.from}). ` + (S.pig < needPig && !S.fOn ? 'Tackjärnet räcker inte – masugnen måste blåsa.' : 'Låt smedjan arbeta, och sälj inte det järnet.'), bad: left < 25 });
+  }
+  const kt = kolTotal();
+  if (!S.fOn) {
+    if (S.wear >= 60 && S.relining <= 0) out.push({ t: 'Mura om masugnen', w: 'Infodringen är för sliten för att tända. Det tar 15 dagar – gör det innan vintern.' });
+    else if (S.relining <= 0 && S.coal >= 150) out.push({ t: 'Tänd masugnen', w: S.snow || S.day > 170 ? 'Du har kol nog att börja blåsa. Utan tackjärn blir det inget stångjärn.' : 'Du har kol nog. Många bruk väntade till snön, för då går kolkörningen tre gånger fortare.' });
+    if (kt < 500 && S.day < 300) out.push({ t: `Samla kol till vintern: ${fmtN(kt)} av ≈ 500 lass`, w: 'Räknat på kolhuset, det som väntar i skogen och milorna som kolar. Masugnen drar ≈ 10 lass per dygn.' });
+  }
+  if (freeKolare() > 0 && monthOf(S.day) !== 3 && S.day < 310 && LOTS.some(l => l.milor > 0)) out.push({ t: `Res milor – ${freeKolare()} kolare står sysslolösa`, w: 'Öppna Kolningen och tryck "Res mila". Skiften nära bruket går fortast att köra hem.' });
+  if (S.fOn && S.coal < 60) out.push({ t: 'Kolet tar slut snart', w: 'Kör hem kol med fler hästar, res fler milor eller köp kol av bönderna (nedan).', bad: true });
+  if (S.money < 500) out.push({ t: 'Kassan är låg', w: 'Sälj stångjärn eller tackjärn nedan, men spara det som behövs till kontrakten.', bad: S.money < 0 });
+  if (!out.length) out.push({ t: 'Allt rullar', w: 'Öka farten (2× eller 4×) tills något behöver dig.' });
+  return out.slice(0, 3);
+}
+
+// ================================================================ så hänger det ihop
+function coalPerDay() { return (S.fOn && S.frozen <= 0 ? CFG.descent * CFG.slots * (S.blEff || 0.8) : 0) + S.smithRate * CFG.coalPerSkp; }
+function chainHTML() {
+  const card = (cls, title, val, st, why, wide) => `<div class="card ${cls} ${wide ? 'wide' : ''}"><h4>${title}<span>${val}</span></h4><div class="st2">${st}</div><div class="why">${why}</div></div>`;
+  const arr = (t, wide = true) => `<div class="arr ${wide ? 'wide' : ''}">▼ ${t}</div>`;
+  const alarmM = S.milor.some(m => m.fire || (m.phase === 'KOL' && m.drag >= 60));
+  const waiting = LOTS.reduce((a, l) => a + l.waiting, 0), active = S.milor.filter(m => m.phase !== 'KLAR').length;
+  const cpd = coalPerDay(), days = cpd > 0.5 ? S.coal / cpd : Infinity;
+  const fc = forecastT(), ws = waterShare();
+  const fBad = S.fOn && (S.frozen > 0 || S.T < 1300 || S.hanging || (fc !== null && fc < 1320));
+  const fWarn = S.fOn && (S.T < 1330 || S.T > 1480 || (fc !== null && (fc < 1330 || fc > 1480)) || S.hearth > 80);
+  const c = S.contracts.filter(c => !c.done).sort((a, b) => a.due - b.due)[0];
+  const cBad = c && S.bar < c.amount && c.due - S.day < 25;
+  const daily = CFG.wageBase + CFG.wageSmith + (S.fOn ? CFG.wageFurnace : 0) + S.kolare * (CFG.wageKolare + S.kolWageBonus) + S.horses * CFG.horseCost;
+  return `<div class="chain">
+    ${card(alarmM ? 'bad' : freeKolare() > 0 && S.day < 310 ? 'warn' : '', '🌲 Skogen', `${active} milor`, alarmM ? '⚠ En mila släpper igenom röken – täta den!' : `${freeKolare()} lediga kolare · ${fmtN(waiting)} lass väntar på körning`, 'Kolarna gör kol av ved i milor (≈ 3 veckor). Fler kolare = fler milor. Hästarna kör hem kolet – 3× fortare på vinterns slädföre.')}
+    ${card('', '⛏ Gruvan', `${fmtN(S.ore)} t malm`, `Malmen är ${S.oreQ > 0.57 ? 'rik' : S.oreQ < 0.53 ? 'mager' : 'normal'}`, 'Bryts och rostas av sig själv. Mager malm gör ugnen kallare.')}
+    ${arr('kol + malm', false)}${arr('', false)}
+    ${card(S.fOn && days < 5 ? 'bad' : S.fOn && days < 15 ? 'warn' : '', '⚫ Kolhuset', `${fmtN(S.coal)} lass`, cpd > 0.5 ? `Räcker ≈ ${days > 99 ? '99+' : Math.round(days)} dygn (går åt ${Math.round(cpd)} lass/dygn)` : 'Inget kol går åt just nu', 'Masugnen äter det mesta av kolet, smedjan lite. Tar kolet slut måste ugnen blåsas ner.', true)}
+    ${arr('i masugnen')}
+    ${card(fBad ? 'bad' : fWarn ? 'warn' : S.fOn ? '' : 'warn', '🔥 Masugnen', S.fOn ? (S.frozen > 0 ? 'frusen' : `${Math.round(S.T)} °C`) : 'står kall', S.fOn ? advice() : S.relining > 0 ? 'Muras om.' : S.wear >= 60 ? 'Infodringen är sliten – mura om innan du tänder.' : 'Tänd den när du har kol nog (helst på vintern).', `Styrs med <b>malmsatsen</b> (mer malm = kallare, verkar efter ≈ 1 dygn) och <b>blästern</b> (mer luft = varmare, verkar direkt). Blästern drivs av vattenhjulet – får ${Math.round(ws.F * 100)} % vatten nu.`, true)}
+    ${arr('tackjärn')}
+    ${card('', '🧱 Tackjärn', `${fmtN(S.pig)} skp`, `Tappas ur härden när den är full${S.fOn ? ` (härden ${Math.round(S.hearth)} %)` : ''}`, 'Mellanvara. Kan säljas billigt (8 daler), men är värt dubbelt som stångjärn.', true)}
+    ${arr('i smedjan')}
+    ${card(S.broken > 0 ? 'bad' : S.pig < 1 ? 'warn' : '', '🔨 Smedjan', `${Math.round(S.smithRate * CFG.barYield * S.pigQ)} skp/dag`, S.broken > 0 ? 'Hammarskaftet är trasigt!' : S.pig < 1 ? 'Inget tackjärn att smida' : `Får ${Math.round(ws.S * 100)} % vatten`, 'Vattenhammaren gör stångjärn av tackjärn. Den <b>delar vattnet</b> med masugnen – välj i smedjan vem som går först när ån är låg.', true)}
+    ${arr('stångjärn')}
+    ${card(cBad ? 'bad' : '', '💰 Kunderna', `${fmtN(S.bar)} skp stångjärn`, c ? `Nästa kontrakt: ${c.amount} skp om ${Math.ceil(c.due - S.day)} dagar (${c.price} daler/skp)` : `Järnvågen betalar ${Math.round(S.price)} daler/skp just nu`, 'Kontrakt betalar bäst men måste levereras i tid. Järnvågen köper när som helst till dagspris.', true)}
+    ${arr('pengar')}
+    ${card(S.money < 0 ? 'bad' : S.money < 800 ? 'warn' : '', '🏦 Kassan', `${fmtN(S.money)} daler`, `Kostar ${fmtN(daily)} daler per dag`, 'Löner till masbruk, smeder och kolare plus hästfoder. Pengar kommer bara in när du säljer järn.', true)}
+  </div>`;
+}
+let chainPrev = null;
+function openChain() { if (S.tut) S.tut.chainOpened = true; if ($('chain').classList.contains('hidden')) { chainPrev = S.speed; S.speed = 0; refreshSpeed(); } $('chainBody').innerHTML = chainHTML(); $('chain').classList.remove('hidden'); }
+$('chainBtn').onclick = openChain;
+$('chainClose').onclick = () => { $('chain').classList.add('hidden'); S.speed = chainPrev ?? 1; refreshSpeed(); };
+
+// ================================================================ lärotiden
+const ratioOk = () => Math.abs(S.ratio - recRatio()) < 0.06;
+const TUT = [
+  { title: 'Välkommen till bruket', read: true, html: () => `<p>Det är december och masugnen brinner. Jag är masmästaren. Jag visar dig hur bruket fungerar, <b>en sak i taget</b>.</p><p>Spelet står still medan du läser. Du kan inte förstöra något under lärotiden.</p>` },
+  { title: 'Masugnen', read: true, open: 'F', focus: 'tempBox', html: () => `<p>Siffran är <b>värmen i härden</b>, längst ner i ugnen där järnet smälter.</p><ul><li><b>Grönt (1 330–1 480 °C)</b> är bra.</li><li><b>För kallt:</b> järnet stelnar och ugnen fryser. Det kostar 8 dagar och mycket pengar.</li><li><b>För varmt:</b> du slösar kol och sliter ut ugnen.</li></ul>` },
+  { title: 'Schaktet', read: true, focus: 'shaftWrap', html: () => `<p>Ugnen fylls uppifrån med <b>satser</b>: ett lass kol plus lite malm. De sjunker sakta ner genom schaktet och smälter i botten.</p><p><b>Det tar ungefär ett dygn.</b> Därför märks det du ändrar först senare – ungefär som att styra ett stort skepp.</p>` },
+  { title: 'Malmsatsen', focus: 'ctlRatio', html: () => `<p><b>Malmsatsen</b> är hur mycket malm du lägger på varje lass kol. Mer malm ger mer järn – men kolet räcker inte till att värma lika mycket, så <b>ugnen blir kallare</b>.</p>`, task: 'Prova: dra malmsatsen åt höger till 1,40.', done: () => S.ratio >= 1.38 },
+  { title: 'Vänta och se', speed: 2, focus: 'rowFcast', html: () => `<p>Titta i schaktet: de nya satserna är ljusare, eftersom de har mer malm. <b>Prognosen</b> visar redan vad värmen blir när de når botten.</p><p>Nu låter vi tiden gå. Håll ögonen på värmen…</p>`, task: () => `Väntar tills ugnen blir sval (under 1 330 °C) – nu ${Math.round(S.T)} °C.`, done: () => S.T < 1330 },
+  { title: 'Den blev kall!', focus: 'ctlBlast', html: () => `<p>Där ser du: satserna med mycket malm kom ner, och ugnen svalnade. Spelet är pausat.</p><p>Det snabbaste botemedlet är <b>blästern</b> – bälgarna som blåser in luft i ugnen. Mer luft ger hetare eld, och <b>det verkar direkt</b>.</p>`, task: 'Dra blästern till 100 %.', done: () => S.blast >= 0.95 },
+  { title: 'Masmästarens råd', focus: 'advBox', html: () => `<p>Blästern hjälper på en gång, men orsaken är fortfarande malmsatsen. Den blå rutan räknar alltid ut <b>lagom malmsats</b> för malmen och blästern du har just nu.</p>`, task: 'Tryck på knappen "Sätt malmsats" i den blå rutan.', done: () => ratioOk() && S.ratio < 1.3 },
+  { title: 'Tillbaka i det gröna', speed: 2, focus: 'tempBox', html: () => `<p>Nu sjunker satser med mer kol ner genom schaktet. Om en stund når de härden.</p>`, task: () => `Väntar tills värmen är över 1 340 °C – nu ${Math.round(S.T)} °C.`, done: () => S.T >= 1340 },
+  { title: 'Tappa härden', speed: 1, focus: 'sectHearth', html: () => `<p>Järnet och slaggen samlas i <b>härden</b>. När den blir full måste du <b>tappa</b>: öppna hålet så att det glödande järnet rinner ut i sandbädden.</p><p>Tappar du inte når slaggen blästerhålen, och ugnen kyls ner snabbt.</p>`, task: () => S.hearth < 80 ? `Vänta tills härden är över 80 % (nu ${Math.round(S.hearth)} %), tryck sedan "Tappa härden".` : 'Tryck "Tappa härden" nu!', done: () => (S.stats.taps || 0) >= 1, enter: () => { S.autoTap = false; $('autoTap').checked = false; } },
+  { title: 'Tackjärn', focus: 'autoTapL', html: () => `<p>Det där är <b>tackjärn</b> – bruksets mellanvara. Det hamnar i lagret till höger.</p><p>Tappningen är rutin, så masmästaren kan sköta den åt dig.</p>`, task: 'Kryssa i "Masmästaren tappar själv".', done: () => S.autoTap },
+  { title: 'Det viktigaste om masugnen', read: true, html: () => `<ul><li><b>För kall?</b> Höj blästern (verkar direkt) och sänk malmsatsen (verkar efter ett dygn).</li><li><b>För varm?</b> Höj malmsatsen.</li><li><b>Prognosen</b> varnar innan det händer.</li><li><b>Osäker?</b> Gör som masmästaren säger i den blå rutan.</li></ul><p>Malmen och vattnet ändras hela tiden, så ugnen behöver tillsyn då och då.</p>` },
+  { title: 'Hammarsmedjan', read: true, unlock: 'S', open: 'S', html: () => `<p>Tackjärn är för sprött för att ge bra betalt. I smedjan värms det och bearbetas under en stor, vattendriven hammare till <b>stångjärn</b> – det som kunderna vill ha.</p><p>Smedjans hammare och masugnens bälgar drivs båda av vattenhjul i ån, så de <b>delar på vattnet</b>. När ån är låg väljer du här vem som får vattnet först.</p>` },
+  { title: 'Smid stångjärn', speed: 2, focus: 'rowBar', html: () => `<p>Smedjan arbetar av sig själv så länge den har tackjärn, kol och vatten. Stångjärnet hamnar i lagret till höger.</p>`, task: () => `Vänta tills du har 15 skp stångjärn (nu ${Math.floor(S.bar)}).`, done: () => S.bar >= 15 },
+  { title: 'Sälj', focus: 'sellBtn', html: () => `<p>Stångjärn är pengar. Du kan sälja direkt på <b>järnvågen</b> till dagspriset, eller spara det till <b>kontrakt</b>. Kontrakten betalar bättre men har ett slutdatum.</p>`, task: 'Tryck "Sälj 50 skp stångjärn".', done: () => (S.stats.sold || 0) >= 1 },
+  { title: 'Kassan', read: true, focus: 'moneyBox', html: () => `<p>Varje dag går pengar till löner och hästfoder – raden under kassan visar hur mycket. Masugnen kostar mest när den brinner.</p><p>Pengar kommer <b>bara</b> in när du säljer järn. Bruket måste alltså producera hela tiden.</p>` },
+  { title: 'Kolet', unlock: 'K', open: 'K', focus: 'lots', html: () => `<p>Sist men viktigast: <b>kolet</b>. Masugnen äter ungefär 10 lass kol per dygn. Kolet görs av ved i <b>milor</b> ute i skogen, och varje kolare sköter en mila.</p>`, task: 'Res en mila i Bruksskogen (översta raden).', done: () => S.milor.length >= 1 },
+  { title: 'Milan reses', speed: 4, focus: 'milor', html: () => `<p>Kolaren staplar veden och täcker den med jord och granris. Sedan tänds den, och veden kolar långsamt i ungefär 16 dagar.</p><p>Vi spolar fram (4×)…</p>`, task: () => { const m = S.milor[0]; return m ? `Milan: ${m.phase === 'BYGG' ? `reses ${Math.round(m.t / CFG.milaBuild * 100)} %` : 'tänd!'}` : ''; }, done: () => S.milor.some(m => m.phase === 'KOL') },
+  { title: 'Röken slår igenom!', focus: 'milor', enter: () => { const m = S.milor.find(m => m.phase === 'KOL'); if (m) m.drag = 74; }, html: () => `<p>En mila måste pyra långsamt utan lågor. Blåser det, eller sjunker täckningen, får milan för mycket drag. Då slår röken igenom, och till slut brinner kolet upp.</p><p>Röd stapel betyder att kolaren måste <b>täta</b> milan. Milans skylt ute i skogen blinkar också.</p>`, task: 'Tryck "Täta milan".', done: () => S.milor.every(m => m.phase !== 'KOL' || m.drag < 30) },
+  { title: 'Kolkörningen', read: true, html: () => `<p>När milan är klar körs kolet till kolhuset med häst. På vintern, med slädföre, går det <b>tre gånger fortare</b>.</p><p>Fler kolare och hästar ger mer kol, men alla vill ha lön.</p>` },
+  { title: 'Hela bruket på en bild', focus: 'chainBtn', html: () => `<p>Knappen <b>📖 Så hänger det ihop</b> i listen överst visar hela kedjan, vad som styr vad och hur det går just nu.</p>`, task: 'Öppna den.', done: () => S.tut.chainOpened && $('chain').classList.contains('hidden'), doneTxt: 'Stäng den när du har tittat klart.' },
+  { title: 'Nu kan du grunderna!', final: true, focus: 'todo', html: () => `<p>I det riktiga bruksåret börjar du i <b>juni</b>, med kall masugn och nästan tomt kolhus. Ett bruksår går till så här:</p><ul><li><b>Sommar och höst:</b> res milor och samla kol. Mura om masugnen.</li><li><b>Vinter:</b> tänd masugnen och blås tackjärn medan kolet räcker.</li><li><b>Hela året:</b> smedjan gör stångjärn, och kontrakten ska levereras i tid.</li></ul><p>Rutan <b>Att göra nu</b> uppe till höger säger alltid vad som är viktigast.</p>` },
+];
+function startTut() {
+  $('intro').classList.add('hidden');
+  Object.assign(S, { day: 190, snowStart: 150, snow: true, fOn: true, T: 1405, ratio: 1.1, blast: 0.8, hearth: 22, wear: 10, ansats: 4, coal: 320, ore: 200, pig: 60, bar: 0, money: 3000, autoTap: false, warnedCold: true, water: 0.9 });
+  S.shaft = []; for (let i = 0; i < CFG.slots; i++) S.shaft.push({ pos: i / CFG.slots, r: 1.1, q: S.oreQ });
+  $('ratio').value = S.ratio; $('blast').value = S.blast; $('autoTap').checked = false;
+  S.tut = { i: -1, locked: new Set(['K', 'S']), chainOpened: false };
+  $('todo').classList.add('hidden'); $('coach').classList.remove('hidden');
+  applySeason(); S.running = true; tutGo(0);
+}
+function tutGo(i) {
+  const t = S.tut; t.i = i; const st = TUT[i];
+  document.querySelectorAll('.hl').forEach(e => e.classList.remove('hl'));
+  if (st.unlock) t.locked.delete(st.unlock);
+  for (const k of ['F', 'K', 'S']) $('st' + k).classList.toggle('locked', t.locked.has(k));
+  if (st.open && S.open !== st.open) openStation(st.open);
+  st.enter && st.enter();
+  S.speed = st.speed || 0; refreshSpeed();
+  $('coachStep').textContent = `Lärotiden · steg ${i + 1} av ${TUT.length}`;
+  $('coachTitle').textContent = st.title; $('coachText').innerHTML = st.html() + (st.task ? '<div class="do" id="coachTask"></div>' : '');
+  $('coachBtns').innerHTML = '';
+  if (st.read || st.final) {
+    const b = document.createElement('button'); b.className = 'btn ' + (st.final ? 'big' : 'fire');
+    b.textContent = st.final ? 'Börja bruksåret 1780' : 'Fortsätt →';
+    b.onclick = st.final ? endTut : () => tutGo(i + 1); $('coachBtns').appendChild(b);
+  }
+  if (st.focus) { const el = $(st.focus); el.classList.add('hl'); setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 400); }
+  tutTick();
+}
+function tutTick() {
+  const t = S.tut; if (!t || t.i < 0) return; const st = TUT[t.i];
+  for (const k of ['K', 'S']) if (t.locked.has(k)) $('sum' + k).textContent = '🔒 kommer senare';
+  if (st.task) { const el = $('coachTask'); const txt = typeof st.task === 'function' ? st.task() : st.task; const show = st.doneTxt && t.chainOpened ? st.doneTxt : txt; if (el && el.textContent !== '👉 ' + show) el.textContent = '👉 ' + show; }
+  if (st.done && st.done()) {
+    if (st.speed) { S.speed = 0; refreshSpeed(); }
+    const next = t.i + 1; t.i = -2; const el = $('coachTask'); if (el) { el.textContent = '✔ Bra!'; el.classList.add('ok'); }
+    setTimeout(() => tutGo(next), 900);
+  }
+}
+function endTut() { try { localStorage.setItem('bruk_tut', '1'); } catch (e) {} location.href = location.pathname + '?ar'; }
+$('coachSkip').onclick = () => { if (confirm('Hoppa över lärotiden och börja bruksåret?')) endTut(); };
 
 // etiketter för milor i 3D
 const labelsEl = $('labels');
@@ -753,6 +886,9 @@ function updateUI() {
   $('contracts').innerHTML = S.contracts.filter(c => !c.done).map(c => `<div class="row"><span>${c.amount} skp till ${dateStr(c.due).replace(/ 17\d\d/, '')}</span><b>${c.price} d/skp</b></div><div class="meter"><i style="width:${clamp(S.bar / c.amount, 0, 1) * 100}%;background:var(--ok)"></i></div>`).join('') || '<div class="small">Inga öppna kontrakt.</div>';
   $('price').textContent = `${Math.round(S.price)} daler/skp`;
   $('sellBtn').disabled = S.bar < 1; $('sellPigBtn').disabled = S.pig < 1;
+  if (!S.tut) { const th = todos().map(x => `<div class="item ${x.bad ? 'bad' : ''}"><b>${x.t}</b><span>${x.w}</span></div>`).join(''); if ($('todoList')._h !== th) { $('todoList').innerHTML = th; $('todoList')._h = th; } }
+  else tutTick();
+  if (!$('chain').classList.contains('hidden')) { const ch = chainHTML(); if ($('chainBody')._h !== ch) { $('chainBody').innerHTML = ch; $('chainBody')._h = ch; } }
 }
 
 // ================================================================ årstider & effekter
@@ -855,4 +991,4 @@ function frame() {
   uiT += dt; if (uiT > 0.12) { uiT = 0; updateUI(); }
 }
 applySeason(); updateUI(); frame();
-window.__y = { step, S, CFG, LOTS, tap, poke, tata, startMila, lightFurnace, blowDown, openStation, recRatio, advice, forecastT };
+window.__y = { step, S, CFG, LOTS, tap, poke, tata, startMila, lightFurnace, blowDown, openStation, recRatio, advice, forecastT, todos, chainHTML, TUT };
