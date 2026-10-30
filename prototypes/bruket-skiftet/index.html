@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bruket – skiftet</title>
+<style>
+  :root { --ink: #f3ece2; --muted: #b3a796; --panel: rgba(18,16,14,.9); --line: rgba(255,240,220,.16); --ok: #7ccf8a; --warn: #f2b84b; --bad: #ef6b5b; --fire: #ff8a3c; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #15120f; color: var(--ink); font: 15px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  .hidden { display: none !important; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  #top { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 18px; align-items: center; padding: 8px 18px; white-space: nowrap; }
+  #top .v { font: 800 22px system-ui; font-variant-numeric: tabular-nums; }
+  #top .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+  #goalBar { width: 160px; height: 9px; border-radius: 5px; background: rgba(255,255,255,.12); overflow: hidden; margin-top: 3px; }
+  #goalBar i { display: block; height: 100%; background: var(--warn); width: 0; transition: width .2s; }
+  #toast { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); padding: 7px 16px; font-size: 16px; font-weight: 600; pointer-events: none; transition: opacity .3s; }
+  .modal { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(8,6,4,.72); padding: 14px; }
+  .modal > .panel { max-width: 640px; width: 100%; padding: 22px 24px; max-height: 100%; overflow-y: auto; text-align: center; }
+  .modal h1 { margin: 0 0 4px; font: 700 32px Georgia, serif; }
+  .modal h2 { margin: 0 0 6px; font: 700 24px Georgia, serif; }
+  .modal .sub { color: var(--muted); margin: 0 0 12px; font-size: 16px; }
+  .icons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 14px 0; font-size: 15px; }
+  .icons div { width: 120px; padding: 10px 6px; border-radius: 10px; background: rgba(255,240,220,.06); border: 1px solid var(--line); }
+  .icons b { display: block; font-size: 34px; line-height: 1.1; margin-bottom: 4px; }
+  .go { background: #c2521d; border: 0; color: #fff; font: 700 18px system-ui; padding: 13px 28px; border-radius: 10px; cursor: pointer; }
+  .go:hover { background: #d8622a; }
+  .sec { background: rgba(255,240,220,.1); border: 1px solid var(--line); color: var(--ink); font: 600 15px system-ui; padding: 10px 18px; border-radius: 10px; cursor: pointer; }
+  .stars { color: var(--warn); font-size: 46px; letter-spacing: 6px; }
+  .shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 9px; margin: 12px 0; text-align: left; }
+  .up { padding: 10px 11px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,240,220,.06); cursor: pointer; color: var(--ink); font: 14px system-ui; text-align: left; }
+  .up:hover:not(:disabled) { border-color: var(--fire); }
+  .up:disabled { opacity: .45; cursor: default; }
+  .up.own { border-color: var(--ok); background: rgba(124,207,138,.12); opacity: 1; }
+  .up .ic { font-size: 28px; float: right; }
+  .up b { display: block; font-size: 15px; }
+  .up span { color: var(--muted); font-size: 12.5px; }
+  .up .p { color: var(--warn); font-weight: 700; margin-top: 4px; display: block; }
+  .career { display: flex; justify-content: center; gap: 4px; margin: 10px 0 4px; flex-wrap: wrap; }
+  .career span { font-size: 12px; padding: 4px 8px; border-radius: 12px; background: rgba(255,255,255,.07); color: var(--muted); }
+  .career span.on { background: rgba(242,184,75,.25); color: #ffe2a8; font-weight: 700; }
+  .row2 { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  table { margin: 8px auto; border-collapse: collapse; font-size: 15px; } td { padding: 4px 10px; } td.r { text-align: right; font-weight: 700; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="top" class="panel hidden">
+  <div><div class="l" id="shiftName">Skift 1</div><div class="v" id="clock">4:00</div></div>
+  <div><div class="l">Intjänat</div><div class="v" id="earned">0</div><div id="goalBar"><i></i></div></div>
+  <div><div class="l">Rykte</div><div class="v" id="rep">★★★</div></div>
+</div>
+<div id="toast" class="panel" style="opacity:0"></div>
+
+<div id="start" class="modal">
+  <div class="panel">
+    <h1>Bruket</h1>
+    <p class="sub">Driv ett järnbruk. Allt händer samtidigt.</p>
+    <div class="icons">
+      <div><b>🌲</b>Kola milor<br><small>släck när det ryker</small></div>
+      <div><b>🔥</b>Ladda ugnen<br><small>kol + malm</small></div>
+      <div><b>⬇</b>Tappa järnet<br><small>håll in</small></div>
+      <div><b>🔨</b>Smid i takt<br><small>klicka i grönt</small></div>
+      <div><b>🛒</b>Leverera<br><small>innan tiden går</small></div>
+    </div>
+    <button class="go" id="startBtn">Börja</button>
+  </div>
+</div>
+
+<div id="brief" class="modal hidden">
+  <div class="panel">
+    <h2 id="bTitle"></h2>
+    <p class="sub" id="bSub"></p>
+    <div class="icons" id="bIcons"></div>
+    <button class="go" id="bGo">Kör!</button>
+  </div>
+</div>
+
+<div id="end" class="modal hidden">
+  <div class="panel">
+    <h2 id="eTitle"></h2>
+    <div class="stars" id="eStars"></div>
+    <table id="eTable"></table>
+    <div class="career" id="career"></div>
+    <h2 style="margin-top:14px;font-size:19px">Bygg ut bruket</h2>
+    <p class="sub" style="margin:0">Kassa: <b id="cash" style="color:var(--warn)"></b></p>
+    <div class="shop" id="shop"></div>
+    <div class="row2"><button class="sec" id="retry">Kör skiftet igen</button><button class="go" id="next">Nästa skift →</button></div>
+  </div>
+</div>
+
+<script>
+// Bruket – skiftet: hela bruket på en skärm, allt händer samtidigt. Prototyp 7.
+'use strict';
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const fmt = n => Math.round(n).toLocaleString('sv-SE');
+
+// ================================================================ karriär & uppgraderingar
+const TITLES = [[0, 'Hyttdräng'], [1500, 'Masmästare'], [4000, 'Bruksskrivare'], [8000, 'Inspektor'], [14000, 'Brukspatron']];
+const UPS = [
+  { id: 'mila3', ic: '🌲', name: 'Tredje milplatsen', d: 'En kolare till i skogen.', p: 250 },
+  { id: 'dräng', ic: '🧑‍🌾', name: 'Kolardräng', d: 'Vaktar milorna – hälften så många rökutbrott.', p: 450 },
+  { id: 'väg', ic: '🛤️', name: 'Bättre kolväg', d: 'Kolkärrorna går dubbelt så fort.', p: 300 },
+  { id: 'bälg', ic: '🪗', name: 'Större bälgar', d: 'Mer bläster – ugnen går fortare och varmare.', p: 500 },
+  { id: 'gjutare', ic: '👷', name: 'Gjutare', d: 'Bär tackorna till smedjan åt dig.', p: 400 },
+  { id: 'gesäll', ic: '🔨', name: 'Hammargesäll', d: 'Bredare grön zon vid hammaren.', p: 350 },
+  { id: 'hammare2', ic: '⚙️', name: 'Andra hammaren', d: 'Smider en tacka själv då och då.', p: 900 },
+];
+const SHIFTS = [
+  { name: 'Första skiftet', pace: 0.55, goal: [180, 300, 420], time: 180, orderEvery: 30, flare: 1, events: [], tip: 'Lär dig grunderna. Kunderna är tålmodiga.' },
+  { name: 'Marknadsdag', pace: 0.7, goal: [300, 480, 660], time: 210, orderEvery: 21, flare: 1, events: [{ at: 90, k: 'rush' }], tip: 'Många kunder. Håll smedjan igång.' },
+  { name: 'Blåsväder', pace: 0.8, goal: [320, 520, 720], time: 210, orderEvery: 24, flare: 1.8, events: [{ at: 40, k: 'storm' }], tip: 'Vinden får milorna att ryka. Vakta skogen!' },
+  { name: 'Torka i ån', pace: 0.9, goal: [400, 620, 840], time: 240, orderEvery: 20, flare: 1.2, events: [{ at: 60, k: 'drought' }, { at: 170, k: 'rain' }], tip: 'Lite vatten = svag bläster. Ugnen blir kall.' },
+  { name: 'Kronans beställning', pace: 1, goal: [550, 850, 1150], time: 240, orderEvery: 18, flare: 1.4, events: [{ at: 30, k: 'crown' }, { at: 120, k: 'storm' }], tip: 'En stor order från Kronan. Inget får gå fel.' },
+];
+const SAVE_KEY = 'bruket7';
+function loadSave() { try { return Object.assign({ cash: 0, total: 0, ups: {}, stars: {} }, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) { return { cash: 0, total: 0, ups: {}, stars: {} }; } }
+let SV = loadSave();
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SV)); } catch (e) {} }
+const has = id => !!SV.ups[id];
+
+// ================================================================ världen (virtuella koordinater)
+const VW = 1600, VH = 780, GY = 700;
+const MILA_X = [110, 250, 390];
+const SHED = { x: 470, w: 110 };
+const FX = 780, FTOP = 330, FBOT = GY;                // masugnen
+const SAND = { x: 905, w: 190, slots: 5 };
+const SMITH = { x: 1130, w: 230 };
+const BARS = { x: 1375 };
+const ROAD = { x: 1440 };
+const ORE = { x: 690 };
+
+let S;
+function newShift(i) {
+  const sh = SHIFTS[i];
+  S = { i, sh, t: 0, run: false, over: false, earned: 0, rep: 3, missed: 0,
+    milor: MILA_X.map((x, k) => ({ x, st: k < 2 || has('mila3') ? 'tom' : 'låst', t: 0, flare: 0, fire: 0, next: 0, yield: 12 })),
+    carts: [], coal: 18, ore: 14, layers: [], T: 1400, rc: 0.3, ro: 0.3, hearth: 0, tapping: false, cur: 0, tackor: [], frozen: 0, cold: 0,
+    blast: 0.75, blastMax: has('bälg') ? 1 : 0.85, water: 1,
+    smith: { q: 0, ph: 'idle', heat: 0, hits: 0, m: 0, flash: 0, miss: 0 }, smith2: 0, bars: 0,
+    orders: [], nextOrder: 4, events: sh.events.map(e => ({ ...e })), wind: 1, fx: [], stats: { bars: 0, tackor: 0, delivered: 0, burned: 0, freezes: 0 } };
+  let y = 1; while (y > 0.12) { for (const t of ['K', 'M']) { const h = t === 'K' ? 0.07 : 0.045; y -= h; S.layers.push({ t, h, y }); } }
+  S.layers.sort((a, b) => b.y - a.y);
+  for (let k = 0; k < SAND.slots; k++) S.tackor.push(null);
+}
+
+// ================================================================ meddelanden
+let toastT = 0;
+function toast(t, c = '') { const el = $('toast'); el.textContent = t; el.style.opacity = 1; el.style.borderColor = c === 'bad' ? 'var(--bad)' : c === 'good' ? 'var(--ok)' : 'var(--line)'; toastT = 2.6; }
+function pop(x, y, t, col = '#ffe2a8') { S.fx.push({ x, y, t, col, a: 1 }); }
+
+// ================================================================ skogen
+function milaClick(m) {
+  if (m.st === 'tom') { m.st = 'bygg'; m.t = 0; pop(m.x, GY - 70, 'Reses…'); return; }
+  if (m.st === 'kolar' && (m.flare > 0 || m.fire > 0)) { m.flare = 0; m.fire = 0; m.next = rnd(7, 14) / (S.sh.flare * S.wind) * (has('dräng') ? 2 : 1); pop(m.x, GY - 90, 'Tätad!', '#9fe0a8'); return; }
+  if (m.st === 'klar') { m.st = 'tom'; S.carts.push({ x: m.x, to: SHED.x + 40, n: m.yield, k: 'kol' }); pop(m.x, GY - 70, `+${m.yield} kol på väg`); }
+}
+function forestStep(dt) {
+  for (const m of S.milor) {
+    if (m.st === 'bygg') { m.t += dt; if (m.t > 6) { m.st = 'kolar'; m.t = 0; m.yield = 14; m.next = rnd(4, 9) / S.sh.flare; } }
+    else if (m.st === 'kolar') {
+      m.t += dt;
+      if (m.fire > 0) { m.fire += dt; m.yield = Math.max(0, m.yield - dt * 1.6); if (m.yield <= 0) { m.st = 'tom'; S.stats.burned++; toast('🔥 En mila brann upp!', 'bad'); } }
+      else if (m.flare > 0) { m.flare += dt; if (m.flare > 6) { m.fire = 0.01; m.flare = 0; toast('🔥 Milan brinner – klicka på den!', 'bad'); } }
+      else { m.next -= dt * S.wind * S.sh.flare / (has('dräng') ? 2 : 1); if (m.next <= 0) m.flare = 0.01; }
+      if (m.t > 32 && m.st === 'kolar' && !m.fire) { m.st = 'klar'; m.flare = 0; pop(m.x, GY - 80, 'Klar! Klicka', '#9fe0a8'); }
+    }
+  }
+  for (const c of S.carts) { const v = has('väg') ? 130 : 65; c.x += Math.sign(c.to - c.x) * v * dt; if (Math.abs(c.x - c.to) < 3) { c.done = true; if (c.k === 'kol') { S.coal += c.n; pop(SHED.x + 50, GY - 120, `+${c.n} kol`, '#cfd6e0'); } else cartArrive(c); } }
+  S.carts = S.carts.filter(c => !c.done);
+  S.ore = Math.min(40, S.ore + dt / 1.3 * S.sh.pace);
+}
+
+// ================================================================ masugnen
+const topY = () => S.layers.length ? S.layers[S.layers.length - 1].y : 1;
+function charge(t) {
+  if (!S.run || S.frozen > 0) return;
+  if (t === 'K' && S.coal < 1) { toast('Kolhuset är tomt – kola mer!', 'bad'); return; }
+  if (t === 'M' && S.ore < 1) { toast('Ingen malm just nu – vänta på gruvan.'); return; }
+  const h = t === 'K' ? 0.07 : 0.045;
+  if (topY() - h < -0.01) { pop(FX, FTOP - 30, 'Fullt!'); return; }
+  if (t === 'K') S.coal--; else S.ore--;
+  S.layers.push({ t, h, y: topY() - h, fresh: 1 });
+}
+function furnaceStep(dt) {
+  if (S.frozen > 0) { S.frozen -= dt; S.T += (900 - S.T) * dt; if (S.frozen <= 0) { S.T = 1350; S.hearth = 0; toast('Härden är lagad – ugnen går igen.', 'good'); } return; }
+  const bl = Math.min(S.blast, S.blastMax * S.water), v = 0.045 * bl * S.sh.pace;
+  for (const L of S.layers) L.y += v * dt;
+  let mc = 0, mo = 0;
+  while (S.layers.length && S.layers[0].y + S.layers[0].h > 1) {
+    const L = S.layers[0], m = Math.min(L.y + L.h - 1, L.h); L.h -= m; L.y = 1 - L.h;
+    if (L.t === 'K') mc += m / 0.07; else { mo += m / 0.045; const fe = (m / 0.045) * 2.0 * clamp((S.T - 1150) / 230, 0.3, 1); S.hearth += fe; }
+    if (L.h <= 1e-4) S.layers.shift(); else break;
+  }
+  const k = Math.min(1, dt / 7); S.rc += (mc / dt - S.rc) * k; S.ro += (mo / dt - S.ro) * k;
+  const r = S.ro / Math.max(0.03, S.rc), fill = 1 - topY();
+  const fuel = clamp(S.rc / (0.6 * 0.39 * bl * S.sh.pace + 0.001), 0, 1);   // 1:1-lastning ger full värme; bara glesa kolsatser sänker
+  let target = Math.max(1050, 1000 + fuel * (420 - 190 * (r - 1)) + 220 * (bl - 0.75));
+  if (fill < 0.5) target -= (0.5 - fill) * 500;
+  if (S.hearth > 26) target -= 170;
+  S.T += (target - S.T) * Math.min(1, dt / 4.5);
+  if (S.T < 1180) S.cold += dt; else S.cold = Math.max(0, S.cold - dt);
+  if (S.cold > 7) { S.frozen = 15; S.cold = 0; S.stats.freezes++; S.layers = []; S.hearth = 0; toast('❄ Härden frös! 15 s stopp. För mycket malm, för lite kol.', 'bad'); refill(); }
+  // tappning
+  if (S.tapping) {
+    if (S.hearth > 0.01) {
+      let slot = S.tackor.findIndex(t => t && !t.full); if (slot < 0) slot = S.tackor.findIndex(t => !t);
+      if (slot < 0) { S.tapping = false; toast('Sandbädden är full – bär tackorna till smedjan!', 'bad'); return; }
+      if (!S.tackor[slot]) S.tackor[slot] = { fill: 0, glow: 1, full: false, grey: S.T >= 1380 };
+      const tk = S.tackor[slot], a = Math.min(S.hearth, 5 * dt * (S.T < 1260 ? 0.4 : 1));
+      S.hearth -= a; tk.fill += a; tk.glow = 1; if (S.T < 1380) tk.grey = false;
+      if (tk.fill >= 4) { tk.fill = 4; tk.full = true; S.stats.tackor++; }
+      S.flow = 1;
+    } else { S.flow = 2; S.T -= 25 * dt; }
+  } else S.flow = 0;
+  for (const tk of S.tackor) if (tk) tk.glow = Math.max(0, tk.glow - dt / 6);
+  if (has('gjutare')) { const i = S.tackor.findIndex(t => t && t.full && t.glow < 0.05); if (i >= 0 && Math.random() < dt / 2) moveTackor(i); }
+}
+function refill() { let y = 1; while (y > 0.35) { for (const t of ['K', 'K', 'M']) { const h = t === 'K' ? 0.07 : 0.045; y -= h; S.layers.push({ t, h, y }); } } S.layers.sort((a, b) => b.y - a.y); }
+function moveTackor(only) {
+  let n = 0;
+  S.tackor.forEach((t, i) => { if (t && t.full && t.glow < 0.05 && (only === undefined || only === i)) { S.tackor[i] = null; n++; } });
+  if (!n) { const hot = S.tackor.some(t => t && t.full); toast(hot ? 'Tackorna är för varma – vänta tills de grånat.' : 'Inga färdiga tackor än.'); return; }
+  S.carts.push({ x: SAND.x + 40, to: SMITH.x + 40, n, k: 'tacka' });
+}
+function cartArrive(c) { if (c.k === 'tacka') { S.smith.q += c.n; pop(SMITH.x + 80, GY - 160, `+${c.n} tackor`); } }
+
+// ================================================================ smedjan – smid i takt
+function smithStep(dt) {
+  const sm = S.smith;
+  if (sm.flash > 0) sm.flash -= dt * 3;
+  if (sm.ph === 'idle' && sm.q > 0 && S.coal >= 1) { sm.q--; S.coal--; sm.ph = 'heat'; sm.heat = 0; sm.hits = 0; }
+  if (sm.ph === 'heat') { sm.heat += dt / 2.2; if (sm.heat >= 1) { sm.heat = 1; sm.ph = 'hammer'; sm.m = 0; } }
+  if (sm.ph === 'hammer') { sm.m += dt; sm.heat -= dt * 0.09; if (sm.heat < 0.25) { sm.ph = 'heat'; pop(SMITH.x + 110, GY - 180, 'Kallt – värmer om', '#ffb3a8'); } }
+  if (has('hammare2')) { S.smith2 += dt; if (S.smith2 > 16 && S.smith.q > 0) { S.smith2 = 0; S.smith.q--; S.bars++; S.stats.bars++; pop(SMITH.x + 200, GY - 140, '+1 stång (gesällen)'); } }
+}
+function markerPos() { return (Math.sin(S.smith.m * Math.PI * 2 / 1.8 - Math.PI / 2) + 1) / 2; }
+function zone() { const w = has('gesäll') ? 0.44 : 0.32; return [0.5 - w / 2, 0.5 + w / 2]; }
+function strike() {
+  const sm = S.smith; if (!S.run || sm.ph !== 'hammer') return;
+  const p = markerPos(), [a, b] = zone();
+  if (p >= a && p <= b) { sm.hits++; sm.flash = 1; pop(SMITH.x + 110, GY - 190, 'PANG!', '#ffe2a8');
+    if (sm.hits >= 3) { S.bars++; S.stats.bars++; sm.ph = 'idle'; pop(BARS.x + 20, GY - 100, '+1 stångjärn', '#9fe0a8'); } }
+  else { sm.miss = 1; sm.heat -= 0.22; pop(SMITH.x + 110, GY - 190, 'miss', '#ffb3a8'); }
+}
+
+// ================================================================ kunder
+const BUYERS = ['Smeden i byn', 'Skeppare från Gävle', 'Bonden på Näs', 'Spikfabriken', 'Handelshuset', 'Vagnmakaren'];
+function orderStep(dt) {
+  S.nextOrder -= dt;
+  if (S.nextOrder <= 0 && S.orders.length < 3) {
+    S.nextOrder = S.sh.orderEvery * rnd(0.8, 1.2);
+    const tacka = Math.random() < 0.3, n = tacka ? Math.round(rnd(2, 4)) : Math.round(rnd(1, 3 + S.i * 0.6));
+    const T = (tacka ? 60 : 55 + n * 12) * (S.i === 0 ? 1.4 : 1);
+    S.orders.push({ who: BUYERS[Math.floor(Math.random() * BUYERS.length)], k: tacka ? 'tacka' : 'bar', n, T, t: T, pay: n * (tacka ? 30 : 65), x: VW + 80 });
+  }
+  for (const o of S.orders) { o.t -= dt; o.x += ((VW - 162) - o.x) * Math.min(1, dt * 2); if (o.t <= 0 && !o.gone) { o.gone = true; S.rep = Math.max(0, S.rep - 0.5); S.missed++; toast(`${o.who} åkte – du hann inte! Ryktet sjönk.`, 'bad'); } }
+  S.orders = S.orders.filter(o => !o.gone);
+}
+function deliver(o) {
+  const stockTackor = S.tackor.filter(t => t && t.full && t.glow < 0.05).length;
+  if (o.k === 'bar') { if (S.bars < o.n) return toast(`Behöver ${o.n} stångjärn – du har ${S.bars}.`); S.bars -= o.n; }
+  else { if (stockTackor < o.n) return toast(`Behöver ${o.n} kalla tackor i sandbädden – du har ${stockTackor}.`); let n = o.n; S.tackor.forEach((t, i) => { if (n > 0 && t && t.full && t.glow < 0.05) { S.tackor[i] = null; n--; } }); }
+  const bonus = o.t / o.T > 0.5 ? 1.2 : 1, pay = Math.round(o.pay * bonus * (0.7 + S.rep * 0.1));
+  S.earned += pay; S.stats.delivered++; S.rep = Math.min(3, S.rep + 0.15); o.gone = true;
+  pop(ROAD.x + 60, GY - 150, `+${pay} daler${bonus > 1 ? ' (snabbt!)' : ''}`, '#ffd36a');
+}
+
+// ================================================================ händelser
+function eventStep() {
+  for (const e of S.events) if (!e.done && S.t >= e.at) {
+    e.done = true;
+    if (e.k === 'storm') { S.wind = 2.2; toast('🌬️ Storm! Milorna ryker mer.', 'bad'); setTimeout(() => { if (S) S.wind = 1; }, 50000); }
+    if (e.k === 'rush') { S.nextOrder = 0; S.sh = { ...S.sh, orderEvery: S.sh.orderEvery * 0.6 }; toast('🛒 Marknadsrusning! Fler kunder.', 'bad'); }
+    if (e.k === 'drought') { S.water = 0.6; toast('☀️ Torka – vattenhjulet går trögt, svag bläster.', 'bad'); }
+    if (e.k === 'rain') { S.water = 1; toast('🌧️ Regnet kom – full bläster igen.', 'good'); }
+    if (e.k === 'crown') { S.orders.push({ who: 'Kronan (kanoner)', k: 'bar', n: 8, T: 150, t: 150, pay: 900, x: VW + 80, big: true }); toast('👑 Kronan beställer 8 stångjärn!', 'good'); }
+  }
+}
+
+// ================================================================ huvudsteg
+function step(dt) {
+  S.t += dt;
+  forestStep(dt); furnaceStep(dt); smithStep(dt); orderStep(dt); eventStep();
+  if (S.t >= S.sh.time) endShift();
+}
+
+// ================================================================ ritning
+const cv = $('cv'), g = cv.getContext('2d');
+let sc = 1, ox = 0, oy = 0, dpr = 1;
+function resize() { dpr = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; sc = Math.min(cv.width / VW, cv.height / VH); ox = (cv.width - VW * sc) / 2; oy = (cv.height - VH * sc) / 2; }
+addEventListener('resize', resize); resize();
+const stone = document.createElement('canvas'); stone.width = 400; stone.height = 400;
+(() => { const s = stone.getContext('2d'); s.fillStyle = '#6d665d'; s.fillRect(0, 0, 400, 400); for (let y = 0; y < 400; y += 20) for (let x = -((y / 20) % 2) * 18; x < 400; x += 36) { const v = 95 + Math.random() * 38; s.fillStyle = `rgb(${v},${v - 6},${v - 14})`; s.fillRect(x + 1, y + 1, 34, 18); } })();
+const tcol = (T, a = 1) => { const k = clamp((T - 1100) / 450, 0, 1); return `rgba(${Math.round(180 + 75 * k)},${Math.round(50 + 170 * k)},${Math.round(10 + 150 * k * k)},${a})`; };
+const halfW = d => d < 0.62 ? 22 + (d / 0.62) * 40 : 62 - ((d - 0.62) / 0.38) * 30;
+const FY0 = FTOP + 20, FY1 = GY - 50, yOf = d => FY0 + d * (FY1 - FY0);
+let wheel = 0;
+// klickbara områden
+let HOT = [];
+function hot(x, y, w, h, f, hold) { HOT.push({ x, y, w, h, f, hold }); }
+function bubble(x, y, txt, col = '#ef6b5b', pulse = true) {
+  const s = pulse ? 1 + 0.08 * Math.sin(perfT * 8) : 1; g.save(); g.translate(x, y); g.scale(s, s);
+  g.font = 'bold 15px system-ui'; const w = g.measureText(txt).width + 18;
+  g.fillStyle = col; g.beginPath(); g.roundRect(-w / 2, -16, w, 26, 13); g.fill(); g.beginPath(); g.moveTo(-6, 9); g.lineTo(0, 17); g.lineTo(6, 9); g.fill();
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(txt, 0, 2); g.restore(); g.textAlign = 'left';
+}
+function label(x, y, t, col = 'rgba(255,255,255,.75)', size = 13) { g.fillStyle = col; g.font = `600 ${size}px system-ui`; g.textAlign = 'center'; g.fillText(t, x, y); g.textAlign = 'left'; }
+let perfT = 0;
+function draw(dt) {
+  perfT += dt; HOT = [];
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const sky = g.createLinearGradient(0, 0, 0, cv.height); sky.addColorStop(0, '#5f7fae'); sky.addColorStop(1, '#c9cdd2');
+  g.fillStyle = sky; g.fillRect(0, 0, cv.width, cv.height);
+  g.setTransform(sc, 0, 0, sc, ox, oy);
+  if (!S) return;
+  // bakgrundsskog och kulle
+  g.fillStyle = '#3f4d40'; for (let i = 0; i < 60; i++) { const x = i * 29 - 20, h = 60 + ((i * 53) % 50); g.beginPath(); g.moveTo(x, 520); g.lineTo(x + 15, 520 - h); g.lineTo(x + 30, 520); g.fill(); }
+  g.fillStyle = '#5c6b4a'; g.beginPath(); g.moveTo(560, GY); g.lineTo(600, 360); g.lineTo(720, 350); g.lineTo(735, GY); g.fill();
+  g.fillStyle = '#6f7a58'; g.fillRect(-400, GY, VW + 800, 300); g.fillStyle = '#86704f'; g.fillRect(-400, GY, VW + 800, 8);
+  // å
+  g.fillStyle = '#3e6688'; g.fillRect(-400, GY + 70, VW + 800, 40);
+  // ---- skogen: milor
+  for (let i = 0; i < 18; i++) { const x = 20 + i * 24, h = 90 + (i * 31) % 40; g.fillStyle = '#2c3f2e'; g.beginPath(); g.moveTo(x, GY - 110); g.lineTo(x + 12, GY - 110 - h); g.lineTo(x + 24, GY - 110); g.fill(); }
+  label(250, GY - 250, '🌲 SKOGEN – milor', 'rgba(255,255,255,.9)', 15);
+  for (const m of S.milor) {
+    const x = m.x;
+    if (m.st === 'låst') { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x, GY - 4, 50, 10, 0, 0, 7); g.fill(); label(x, GY - 20, '🔒 köp i butiken', 'rgba(255,255,255,.5)', 11); continue; }
+    if (m.st === 'tom') { g.strokeStyle = 'rgba(255,255,255,.4)'; g.setLineDash([5, 5]); g.beginPath(); g.ellipse(x, GY - 6, 52, 12, 0, 0, 7); g.stroke(); g.setLineDash([]); bubble(x, GY - 40, 'Res mila', '#4f7a52', false); hot(x - 60, GY - 70, 120, 75, () => milaClick(m)); continue; }
+    if (m.st === 'bygg') { const k = m.t / 6; g.fillStyle = '#8a6a40'; for (let j = 0; j < 8 * k; j++) g.fillRect(x - 40 + j * 10, GY - 30, 7, 30); label(x, GY - 45, `reses ${Math.round(k * 100)} %`); continue; }
+    // kolar / klar: kupol av jord
+    g.fillStyle = m.st === 'klar' ? '#1c1816' : '#3b3026'; g.beginPath(); g.ellipse(x, GY, 55, 48, 0, Math.PI, 0); g.fill();
+    g.fillStyle = 'rgba(80,110,60,.6)'; for (let j = 0; j < 7; j++) g.fillRect(x - 40 + j * 12, GY - 30 - Math.sin(j) * 8, 8, 4);
+    if (m.st === 'kolar') {
+      const k = m.t / 32; g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(x - 40, GY + 12, 80, 6); g.fillStyle = '#e0b860'; g.fillRect(x - 40, GY + 12, 80 * k, 6);
+      for (let j = 0; j < 4; j++) { const a = (perfT * 0.6 + j / 4) % 1; g.fillStyle = `rgba(${m.flare || m.fire ? 60 : 200},${m.flare || m.fire ? 55 : 200},${m.flare || m.fire ? 50 : 200},${0.5 * (1 - a)})`; g.beginPath(); g.arc(x + Math.sin(a * 6 + j) * 10, GY - 50 - a * 90, 8 + a * 22 * (m.flare ? 1.8 : 1), 0, 7); g.fill(); }
+      if (m.fire > 0) { for (let j = 0; j < 5; j++) { g.fillStyle = `rgba(255,${120 + j * 25},40,.8)`; g.beginPath(); g.ellipse(x - 30 + j * 15, GY - 40 - Math.random() * 12, 9, 22, 0, 0, 7); g.fill(); } bubble(x, GY - 105, '🔥 BRINNER – klicka!'); hot(x - 65, GY - 130, 130, 140, () => milaClick(m)); }
+      else if (m.flare > 0) { bubble(x, GY - 105, `💨 Täta! ${Math.ceil(6 - m.flare)}`, '#d9822b'); hot(x - 65, GY - 130, 130, 140, () => milaClick(m)); }
+    } else if (m.st === 'klar') { bubble(x, GY - 70, `⚫ ${Math.round(m.yield)} kol – hämta`, '#4f7a52'); hot(x - 65, GY - 95, 130, 100, () => milaClick(m)); }
+  }
+  // kärror
+  for (const c of S.carts) { g.fillStyle = '#6b4a2c'; g.fillRect(c.x - 18, GY - 26, 36, 18); g.fillStyle = c.k === 'kol' ? '#1c1816' : '#8f8b85'; g.fillRect(c.x - 16, GY - 32, 32, 7); g.fillStyle = '#222'; g.beginPath(); g.arc(c.x - 10, GY - 6, 6, 0, 7); g.arc(c.x + 10, GY - 6, 6, 0, 7); g.fill(); g.fillStyle = '#5a4030'; g.fillRect(c.x + (c.to > c.x ? 20 : -36), GY - 34, 16, 22); }
+  // ---- kolhuset
+  g.fillStyle = '#7b2a1e'; g.fillRect(SHED.x, GY - 120, SHED.w, 120); g.fillStyle = '#4a3a30'; g.beginPath(); g.moveTo(SHED.x - 10, GY - 118); g.lineTo(SHED.x + SHED.w / 2, GY - 160); g.lineTo(SHED.x + SHED.w + 10, GY - 118); g.fill();
+  g.fillStyle = '#1c1816'; const ch = Math.min(90, S.coal * 2.2); g.beginPath(); g.moveTo(SHED.x + 8, GY); g.lineTo(SHED.x + SHED.w / 2, GY - ch); g.lineTo(SHED.x + SHED.w - 8, GY); g.fill();
+  label(SHED.x + SHED.w / 2, GY - 170, `⚫ Kol: ${Math.floor(S.coal)}`, S.coal < 4 ? '#ffb3a8' : '#fff', 15);
+  if (S.coal < 4) bubble(SHED.x + SHED.w / 2, GY - 195, 'Nästan slut!');
+  // ---- gruvan / malmhögen på slänten
+  g.fillStyle = '#8a3b22'; const oh = Math.min(50, S.ore * 2); g.beginPath(); g.moveTo(610, 352); g.lineTo(650, 352 - oh); g.lineTo(700, 350); g.fill();
+  label(650, 300, `🟤 Malm: ${Math.floor(S.ore)}`, '#fff', 15);
+  // ---- masugnen
+  g.save(); g.beginPath(); g.moveTo(FX - 130, GY); g.lineTo(FX - 85, FTOP); g.lineTo(FX + 85, FTOP); g.lineTo(FX + 130, GY); g.closePath(); g.fillStyle = g.createPattern(stone, 'repeat'); g.fill(); g.strokeStyle = '#3a352f'; g.lineWidth = 3; g.stroke(); g.restore();
+  g.fillStyle = '#5a3d24'; g.fillRect(700, FTOP - 4, FX - 85 - 700, 8); // bro
+  g.fillStyle = '#7b2a1e'; g.fillRect(FX - 95, FTOP - 60, 70, 58); g.fillRect(FX + 25, FTOP - 60, 70, 58); g.fillStyle = '#4a3a30'; g.beginPath(); g.moveTo(FX - 105, FTOP - 58); g.lineTo(FX, FTOP - 95); g.lineTo(FX + 105, FTOP - 58); g.fill();
+  // schaktet i genomskärning
+  g.save(); g.beginPath(); g.moveTo(FX - halfW(0), FY0); for (let d = 0; d <= 1.0001; d += 0.02) g.lineTo(FX - halfW(d), yOf(d)); g.lineTo(FX - 30, GY - 4); g.lineTo(FX + 30, GY - 4); for (let d = 1; d >= -0.0001; d -= 0.02) g.lineTo(FX + halfW(d), yOf(d)); g.closePath(); g.fillStyle = '#120d0a'; g.fill(); g.clip();
+  for (const L of S.layers) { const a = yOf(Math.max(0, L.y)), b = yOf(Math.min(1, L.y + L.h)); if (b > a) { g.fillStyle = L.t === 'K' ? '#211b18' : '#8a3b22'; g.fillRect(FX - 70, a, 140, b - a); g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(FX - 70, b - 1, 140, 1); } }
+  const gl = g.createLinearGradient(0, yOf(0.45), 0, GY); gl.addColorStop(0, tcol(S.T, 0)); gl.addColorStop(1, tcol(S.T, 0.8)); g.fillStyle = gl; g.fillRect(FX - 70, yOf(0.45), 140, GY);
+  const hh = (GY - 4 - FY1) * clamp(S.hearth / 30, 0, 1.1); g.fillStyle = tcol(S.T + 80); g.fillRect(FX - 40, GY - 4 - hh, 80, hh);
+  g.restore();
+  if (S.frozen > 0) { g.fillStyle = 'rgba(150,190,255,.35)'; g.fillRect(FX - 70, FY0, 140, GY - FY0); bubble(FX, FY1 - 40, `❄ Frusen ${Math.ceil(S.frozen)} s`, '#5578b8', false); }
+  // gichtlåga
+  for (let i = 0; i < 3; i++) { g.fillStyle = tcol(S.T - 150 + i * 60, 0.4); g.beginPath(); g.ellipse(FX + Math.sin(perfT * 5 + i) * 3, FY0 - 10 - i * 8, 14 - i * 3, 18, 0, 0, 7); g.fill(); }
+  // vattenhjul + bälg
+  wheel += dt * Math.min(S.blast, S.blastMax * S.water) * 2.4;
+  g.save(); g.translate(FX - 175, GY - 60); g.rotate(wheel); g.strokeStyle = '#5a3d24'; g.lineWidth = 5; g.beginPath(); g.arc(0, 0, 50, 0, 7); g.stroke(); for (let i = 0; i < 10; i++) { g.rotate(Math.PI / 5); g.fillStyle = '#6b4a2c'; g.fillRect(-3, -55, 6, 16); g.fillRect(-1.5, -50, 3, 50); } g.restore();
+  // värmemätare vid ugnen
+  const tx = FX + 145, ty0 = FTOP + 20, th = 250;
+  const grad = g.createLinearGradient(0, ty0 + th, 0, ty0); grad.addColorStop(0, '#3a5a8c'); grad.addColorStop(0.2, '#c58b3b'); grad.addColorStop(0.45, '#7ccf8a'); grad.addColorStop(0.75, '#7ccf8a'); grad.addColorStop(0.85, '#f2b84b'); grad.addColorStop(1, '#ef6b5b');
+  g.fillStyle = grad; g.fillRect(tx, ty0, 16, th); const mk = ty0 + th - clamp((S.T - 1100) / 460, 0, 1) * th; g.fillStyle = '#fff'; g.fillRect(tx - 5, mk - 2, 26, 4);
+  label(tx + 8, ty0 - 10, `${Math.round(S.T)}°`, S.T < 1300 ? '#ffb3a8' : '#fff', 15);
+  // ladda-knappar på bron
+  const bx1 = FX - 175, by = FTOP - 130;
+  drawBtn(bx1, by, 64, 48, '⚫ Kol', '#2a2421', () => charge('K'), 'K');
+  drawBtn(bx1 + 72, by, 64, 48, '🟤 Malm', '#6a2e1c', () => charge('M'), 'M');
+  // hint för ugnen
+  if (S.frozen <= 0) {
+    if (S.T < 1290) bubble(FX, FTOP - 150, '🥶 Kall! Mer KOL');
+    else if (S.T > 1500) bubble(FX, FTOP - 150, '🥵 Het! Mer MALM', '#d9822b');
+    else if (1 - topY() < 0.6) bubble(FX, FTOP - 150, '⬇ Fyll på!', '#d9822b');
+  }
+  // bläster
+  label(FX - 175, GY - 125, `Bläster ${Math.round(Math.min(S.blast, S.blastMax * S.water) * 100)} %`, '#fff', 12);
+  drawBtn(FX - 215, GY - 118, 34, 30, '−', '#3a3530', () => { S.blast = clamp(S.blast - 0.1, 0.3, S.blastMax); });
+  drawBtn(FX - 175, GY - 118, 34, 30, '+', '#3a3530', () => { S.blast = clamp(S.blast + 0.1, 0.3, S.blastMax); });
+  // ---- sandbädden
+  g.fillStyle = '#c4a77c'; g.fillRect(SAND.x, GY - 14, SAND.w, 14);
+  for (let i = 0; i < SAND.slots; i++) { const t = S.tackor[i], x = SAND.x + 6 + i * 37; g.fillStyle = '#9a8460'; g.fillRect(x, GY - 12, 30, 9); if (t) { g.fillStyle = t.glow > 0.05 ? tcol(1200 + 300 * t.glow) : (t.grey ? '#70737a' : '#c9c5bc'); g.fillRect(x, GY - 12, 30 * t.fill / 4, 9); } }
+  label(SAND.x + SAND.w / 2, GY + 30, 'sandbädden – tackor', 'rgba(255,255,255,.8)');
+  if (S.flow) { g.strokeStyle = S.flow === 2 ? '#c88a3a' : tcol(1480); g.lineWidth = 5; g.beginPath(); g.moveTo(FX + 30, GY - 8); g.lineTo(SAND.x + 10, GY - 8); g.stroke(); }
+  if (S.flow === 2) { g.fillStyle = 'rgba(255,200,120,.9)'; for (let i = 0; i < 14; i++) g.fillRect(FX + 40 + Math.random() * 40, GY - 40 + Math.random() * 30, 3, 3); }
+  // tappknapp (håll)
+  const tapPulse = S.hearth > 18;
+  drawBtn(SAND.x, GY - 130, 110, 54, S.tapping ? '⬇ Tappar…' : '⬇ Tappa', S.tapping ? '#c2521d' : '#6a2c10', null, 'J', 'tap');
+  label(SAND.x + 55, GY - 140, `härden ${Math.round(S.hearth / 30 * 100)} %`, S.hearth > 26 ? '#ffb3a8' : '#fff', 12);
+  if (tapPulse && !S.tapping) bubble(SAND.x + 55, GY - 160, S.hearth > 26 ? 'Full! Tappa!' : 'Tappa snart');
+  const cold = S.tackor.filter(t => t && t.full && t.glow < 0.05).length;
+  if (cold) { drawBtn(SAND.x + 118, GY - 130, 70, 54, `➡ ${cold}`, '#3a4a5a', () => moveTackor()); label(SAND.x + 153, GY - 140, 'till smedjan', '#fff', 11); }
+  // ---- smedjan
+  const sx = SMITH.x; g.fillStyle = '#5a3a28'; g.fillRect(sx, GY - 170, SMITH.w, 170); g.fillStyle = '#3a2a20'; g.beginPath(); g.moveTo(sx - 12, GY - 168); g.lineTo(sx + SMITH.w / 2, GY - 230); g.lineTo(sx + SMITH.w + 12, GY - 168); g.fill();
+  g.fillStyle = '#1e1512'; g.fillRect(sx + 10, GY - 155, SMITH.w - 20, 155);
+  const sm = S.smith;
+  // härd
+  g.fillStyle = sm.ph === 'heat' ? `rgba(255,${120 + 80 * sm.heat},40,.9)` : 'rgba(150,60,20,.6)'; g.beginPath(); g.ellipse(sx + 45, GY - 40, 26, 14, 0, 0, 7); g.fill();
+  // hammare (stock + huvud) som lyfts av kammar
+  const lift = sm.ph === 'hammer' ? Math.max(0, Math.sin(sm.m * Math.PI * 2 / 1.8 + Math.PI / 2)) : 0.2;
+  g.fillStyle = '#6b4a2c'; g.save(); g.translate(sx + 210, GY - 70); g.rotate(-0.1 - lift * 0.18); g.fillRect(-110, -8, 120, 14); g.fillStyle = '#333'; g.fillRect(-122, -10, 26, 34); g.restore();
+  g.fillStyle = '#2b2b2b'; g.fillRect(sx + 88, GY - 36, 40, 36); // städ
+  if (sm.ph === 'hammer' || sm.ph === 'heat') { g.fillStyle = tcol(1150 + 400 * sm.heat); g.fillRect(sm.ph === 'heat' ? sx + 30 : sx + 80, sm.ph === 'heat' ? GY - 48 : GY - 44, 56, 9); }
+  if (sm.flash > 0) { g.fillStyle = `rgba(255,220,120,${sm.flash * 0.8})`; for (let i = 0; i < 18; i++) g.fillRect(sx + 105 + rnd(-40, 40), GY - 50 + rnd(-30, 10), 3, 3); }
+  label(sx + SMITH.w / 2, GY - 240, `🔨 SMEDJAN · ${sm.q} tackor väntar`, '#fff', 15);
+  // takt-mätaren
+  if (sm.ph === 'hammer') {
+    const mx = sx + 10, my = GY - 210, mw = SMITH.w - 20, [za, zb] = zone();
+    g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(mx - 4, my - 4, mw + 8, 30);
+    g.fillStyle = '#5a2a20'; g.fillRect(mx, my, mw, 22); g.fillStyle = '#4a9a5a'; g.fillRect(mx + mw * za, my, mw * (zb - za), 22);
+    g.fillStyle = '#fff'; g.fillRect(mx + mw * markerPos() - 3, my - 4, 6, 30);
+    for (let h = 0; h < 3; h++) { g.fillStyle = h < sm.hits ? '#ffd36a' : 'rgba(255,255,255,.25)'; g.beginPath(); g.arc(sx + SMITH.w / 2 - 20 + h * 20, my + 42, 6, 0, 7); g.fill(); }
+    bubble(sx + SMITH.w / 2, my - 20, 'Klicka i GRÖNT! (mellanslag)', '#4f7a52');
+    hot(sx - 10, GY - 260, SMITH.w + 20, 260, strike);
+  } else if (sm.ph === 'heat') label(sx + 45, GY - 70, 'värms…', '#ffd9a0', 12);
+  else if (sm.q === 0) label(sx + SMITH.w / 2, GY - 190, 'väntar på tackor', 'rgba(255,255,255,.55)', 13);
+  // stångjärn-stapel
+  for (let i = 0; i < Math.min(S.bars, 20); i++) { g.fillStyle = '#7b7f87'; g.fillRect(BARS.x, GY - 6 - i * 6, 52, 5); }
+  label(BARS.x + 26, GY - 150 > GY - 6 - S.bars * 6 - 20 ? GY - 6 - Math.min(S.bars, 20) * 6 - 14 : GY - 150, `${S.bars} stång`, '#fff', 14);
+  // ---- kunder vid vägen
+  S.orders.forEach((o, i) => {
+    const x = o.x + i * 0, y = GY - 120 - i * 125, w = 150, h = 108, need = o.k === 'bar' ? S.bars >= o.n : S.tackor.filter(t => t && t.full && t.glow < 0.05).length >= o.n;
+    g.fillStyle = o.big ? 'rgba(80,60,20,.95)' : 'rgba(25,22,20,.92)'; g.strokeStyle = need ? '#7ccf8a' : 'rgba(255,255,255,.25)'; g.lineWidth = need ? 3 : 1;
+    g.beginPath(); g.roundRect(x, y, w, h, 10); g.fill(); g.stroke();
+    g.fillStyle = '#fff'; g.font = '600 12px system-ui'; g.fillText(o.who, x + 8, y + 18);
+    g.font = '800 24px system-ui'; g.fillText(`${o.n} × ${o.k === 'bar' ? '▬' : '▭'}`, x + 8, y + 48);
+    g.font = '12px system-ui'; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(o.k === 'bar' ? 'stångjärn' : 'tackjärn', x + 8, y + 64);
+    g.fillStyle = '#ffd36a'; g.font = '700 14px system-ui'; g.fillText(`${o.pay} d`, x + 95, y + 48);
+    const k = o.t / o.T; g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(x + 8, y + 76, w - 16, 9); g.fillStyle = k > 0.5 ? '#7ccf8a' : k > 0.25 ? '#f2b84b' : '#ef6b5b'; g.fillRect(x + 8, y + 76, (w - 16) * k, 9);
+    g.fillStyle = need ? '#9fe0a8' : 'rgba(255,255,255,.5)'; g.font = '600 12px system-ui'; g.fillText(need ? '✔ Klicka – leverera' : `${Math.ceil(o.t)} s kvar`, x + 8, y + 101);
+    hot(x, y, w, h, () => deliver(o));
+  });
+  label(VW - 87, GY + 30, '🛒 KUNDER', 'rgba(255,255,255,.85)', 14);
+  // flytande texter
+  for (const f of S.fx) { f.a -= dt * 0.7; f.y -= dt * 30; g.globalAlpha = clamp(f.a, 0, 1); label(f.x, f.y, f.t, f.col, 16); g.globalAlpha = 1; }
+  S.fx = S.fx.filter(f => f.a > 0);
+}
+function drawBtn(x, y, w, h, t, col, f, key, holdKey) {
+  const held = holdKey && S[holdKey === 'tap' ? 'tapping' : holdKey];
+  g.fillStyle = col; g.strokeStyle = held ? '#ffd36a' : 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.beginPath(); g.roundRect(x, y, w, h, 9); g.fill(); g.stroke();
+  g.fillStyle = '#fff'; g.font = '700 15px system-ui'; g.textAlign = 'center'; g.fillText(t, x + w / 2, y + h / 2 + (key ? 0 : 5));
+  if (key) { g.font = '11px system-ui'; g.fillStyle = 'rgba(255,255,255,.6)'; g.fillText(holdKey ? `håll · ${key}` : key, x + w / 2, y + h - 7); }
+  g.textAlign = 'left';
+  HOT.push({ x, y, w, h, f, hold: holdKey });
+}
+
+// ================================================================ input
+function toV(e) { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) * dpr - ox) / sc, y: ((e.clientY - r.top) * dpr - oy) / sc }; }
+let holding = null;
+cv.addEventListener('pointerdown', e => {
+  if (!S || !S.run) return; const p = toV(e);
+  for (let i = HOT.length - 1; i >= 0; i--) { const h = HOT[i]; if (p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) {
+    if (h.hold === 'tap') { S.tapping = true; holding = 'tap'; } else if (h.f) h.f(); return; } }
+});
+const release = () => { if (holding === 'tap' && S) S.tapping = false; holding = null; };
+addEventListener('pointerup', release); addEventListener('pointercancel', release);
+addEventListener('keydown', e => {
+  if (!S || !S.run) return; const k = e.key.toLowerCase();
+  if (k === 'k' || k === 'a') charge('K'); else if (k === 'm' || k === 'd') charge('M');
+  else if (k === 'j') S.tapping = true; else if (k === ' ') { e.preventDefault(); if (!e.repeat) strike(); }
+});
+addEventListener('keyup', e => { if (S && e.key.toLowerCase() === 'j') S.tapping = false; });
+
+// ================================================================ HUD, skiften, butik
+function hud() {
+  const left = Math.max(0, S.sh.time - S.t); $('clock').textContent = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+  $('earned').textContent = `${fmt(S.earned)} d`; $('goalBar').firstElementChild.style.width = `${clamp(S.earned / S.sh.goal[0], 0, 1) * 100}%`;
+  $('rep').textContent = '★'.repeat(Math.round(S.rep)) + '☆'.repeat(3 - Math.round(S.rep));
+}
+function titleOf(total) { let t = TITLES[0][1]; for (const [n, name] of TITLES) if (total >= n) t = name; return t; }
+function openBrief(i) {
+  newShift(i); $('end').classList.add('hidden'); $('start').classList.add('hidden');
+  $('bTitle').textContent = `Skift ${i + 1}: ${SHIFTS[i].name}`; $('bSub').textContent = SHIFTS[i].tip;
+  const g0 = SHIFTS[i].goal; $('bIcons').innerHTML = `<div><b>💰</b>Tjäna ${g0[0]} d</div><div><b>⏱</b>${Math.round(SHIFTS[i].time / 60 * 10) / 10} min</div><div><b>★★★</b>${g0[2]} d</div>`;
+  $('shiftName').textContent = `Skift ${i + 1} · ${titleOf(SV.total)}`;
+  $('brief').classList.remove('hidden'); $('top').classList.remove('hidden'); hud();
+}
+$('bGo').onclick = () => { $('brief').classList.add('hidden'); S.run = true; if (S.i === 0) setTimeout(() => toast('Börja: klicka "Res mila" i skogen 🌲'), 600); };
+$('startBtn').onclick = () => openBrief(Math.min(SHIFTS.length - 1, Object.keys(SV.stars).length));
+function endShift() {
+  if (S.over) return; S.over = true; S.run = false; S.tapping = false;
+  const g0 = S.sh.goal, e = S.earned, st = e >= g0[2] ? 3 : e >= g0[1] ? 2 : e >= g0[0] ? 1 : 0;
+  SV.stars[S.i] = Math.max(SV.stars[S.i] || 0, st); SV.cash += e; SV.total += e; persist();
+  $('eTitle').textContent = st ? `Skiftet klart!` : 'Inte riktigt…';
+  $('eStars').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
+  $('eTable').innerHTML = `<tr><td>💰 Intjänat</td><td class="r">${fmt(e)} d</td></tr><tr><td>🛒 Leveranser · missade</td><td class="r">${S.stats.delivered} · ${S.missed}</td></tr><tr><td>▭ Tackor gjutna · ▬ stångjärn smitt</td><td class="r">${S.stats.tackor} · ${S.stats.bars}</td></tr><tr><td>🔥 Brunna milor · ❄ frusen härd</td><td class="r">${S.stats.burned} · ${S.stats.freezes}</td></tr>`;
+  $('career').innerHTML = TITLES.map(([n, name]) => `<span class="${titleOf(SV.total) === name ? 'on' : ''}">${name}${n ? ` ${fmt(n)}` : ''}</span>`).join('');
+  $('next').classList.toggle('hidden', !(st > 0 && S.i < SHIFTS.length - 1));
+  shop(); $('end').classList.remove('hidden');
+}
+function shop() {
+  $('cash').textContent = `${fmt(SV.cash)} daler`;
+  $('shop').innerHTML = UPS.map(u => `<button class="up ${has(u.id) ? 'own' : ''}" data-u="${u.id}" ${has(u.id) || SV.cash < u.p ? 'disabled' : ''}><span class="ic">${u.ic}</span><b>${u.name}</b><span>${u.d}</span><span class="p">${has(u.id) ? '✔ Köpt' : `${u.p} daler`}</span></button>`).join('');
+  $('shop').querySelectorAll('[data-u]').forEach(b => b.onclick = () => { const u = UPS.find(x => x.id === b.dataset.u); if (SV.cash >= u.p && !has(u.id)) { SV.cash -= u.p; SV.ups[u.id] = 1; persist(); shop(); } });
+}
+$('retry').onclick = () => openBrief(S.i);
+$('next').onclick = () => openBrief(S.i + 1);
+
+// ================================================================ loop
+let last = performance.now(), hudT = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const rdt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (S && S.run && !S.over) { const sdt = rdt * (window.__ts || 1), n = Math.ceil(sdt / 0.02); for (let i = 0; i < n && S.run; i++) step(sdt / n); }
+  draw(rdt);
+  if (toastT > 0) { toastT -= rdt; if (toastT <= 0) $('toast').style.opacity = 0; }
+  if (S) { hudT += rdt; if (hudT > 0.1) { hudT = 0; hud(); } }
+}
+newShift(0); requestAnimationFrame(frame);
+window.__b = { get S() { return S; }, charge, strike, deliver, milaClick, moveTackor, openBrief, endShift, SHIFTS, get SV() { return SV; }, markerPos, zone };
+</script>
+</body>
+</html>
