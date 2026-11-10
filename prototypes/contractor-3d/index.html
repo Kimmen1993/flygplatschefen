@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Contractor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 3D site fills the screen; status bar on top; site-office panel on the right (bottom sheet on phones); events as centred cards */
+:root{
+  --glass:rgba(18,20,26,.84); --glass2:rgba(34,38,48,.9); --line:rgba(255,255,255,.1); --ink:#f1f2f4; --muted:#9aa1ad;
+  --amber:#f2a51a; --ok:#41c98a; --warn:#ffb020; --bad:#ff5d5d; --sky:#5fb0ff;
+  --ui:'Archivo',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#9fb3c6;color:var(--ink);font-family:var(--ui);font-size:14px;overflow:hidden;-webkit-tap-highlight-color:transparent}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.mono{font-family:var(--mono)}
+/* top bar */
+#top{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;gap:6px 18px;align-items:center;flex-wrap:wrap;
+  padding:calc(8px + env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));
+  background:linear-gradient(180deg,rgba(14,16,20,.88),rgba(14,16,20,.6));border-bottom:1px solid var(--line)}
+#top .brand{font-weight:800;font-size:16px;letter-spacing:.02em;margin-right:auto;display:flex;align-items:center;gap:8px}
+#top .brand i{width:10px;height:10px;background:var(--amber);display:inline-block;transform:rotate(45deg)}
+.stat{display:flex;flex-direction:column;line-height:1.15}
+.stat span{font-size:10.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.stat b{font-family:var(--mono);font-size:15px;font-weight:500}
+.good{color:var(--ok)} .warnc{color:var(--warn)} .badc{color:var(--bad)}
+/* panel */
+#panel{position:fixed;z-index:4;right:max(12px,env(safe-area-inset-right,0px));top:70px;bottom:12px;width:340px;display:flex;flex-direction:column;gap:10px;
+  overflow:auto;padding:12px;background:var(--glass);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px)}
+.sec h3{margin:0 0 7px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;justify-content:space-between}
+.fc{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.fc div{background:var(--glass2);border-radius:6px;padding:5px 0 4px;text-align:center;font-size:10.5px;color:var(--muted);border:1px solid transparent}
+.fc div.now{border-color:var(--amber);color:var(--ink)}
+.fc i{display:block;font-style:normal;font-size:19px;line-height:1.3}
+.fc u{display:block;text-decoration:none;letter-spacing:1px;font-size:8px;color:var(--muted)}
+.ph{display:grid;grid-template-columns:22px 1fr 44px;gap:6px;align-items:center;margin-bottom:5px;font-size:13px}
+.ph .bar{grid-column:2/4;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:-2px}
+.ph .bar i{display:block;height:100%;background:var(--amber)}
+.ph.done .bar i{background:var(--ok)}
+.ph.cur{font-weight:700}
+.ph .pc{text-align:right;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.proj{margin-top:6px;padding:7px 9px;border-radius:7px;background:var(--glass2);font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.ctrl{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.ctrl:last-child{border-bottom:0}
+.ctrl .l{display:flex;flex-direction:column}
+.ctrl .l small{color:var(--muted);font-family:var(--mono);font-size:11px}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--glass2);font-size:18px}
+.step b{font-family:var(--mono);font-size:17px;min-width:22px;text-align:center}
+.tog{width:52px;height:28px;border-radius:14px;border:1px solid var(--line);background:var(--glass2);position:relative;padding:0;flex:none}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#6b7280;transition:transform .15s}
+.tog[aria-pressed="true"]{background:rgba(242,165,26,.35);border-color:var(--amber)}
+.tog[aria-pressed="true"]::after{transform:translateX(24px);background:var(--amber)}
+.meter{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;width:70px}
+.meter i{display:block;height:100%}
+#tip{display:flex;gap:10px;align-items:flex-start;padding:9px;border-radius:9px;background:rgba(242,165,26,.1);border:1px solid rgba(242,165,26,.35);font-size:13.5px;line-height:1.35}
+#tip .face{flex:none;width:34px;height:34px;border-radius:50%;background:var(--amber);color:#1a1205;display:grid;place-items:center;font-weight:800}
+#speed{display:flex;gap:6px}
+#speed button{flex:1;height:38px;border-radius:8px;border:1px solid var(--line);background:var(--glass2);font-size:15px;font-weight:700}
+#speed button[aria-pressed="true"]{background:var(--amber);color:#1a1205;border-color:var(--amber)}
+/* modal / overlays */
+.ov{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(10,12,16,.45);backdrop-filter:blur(2px)}
+.card{width:min(560px,100%);max-height:calc(100% - 16px);overflow:auto;background:rgba(20,22,28,.96);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.card .ey{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-weight:700}
+.card h2{margin:0;font-size:24px;font-weight:800;line-height:1.15;text-wrap:balance}
+.card p{margin:0;color:#c9ced6;font-size:15px;line-height:1.45}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--glass2)}
+.opt:hover{border-color:var(--amber)}
+.opt b{font-size:15.5px}
+.opt small{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}
+.opt.rec{border-color:rgba(65,201,138,.6)}
+.advice{font-size:13.5px;color:var(--ink);padding:9px 11px;border-radius:8px;background:rgba(242,165,26,.1);border-left:3px solid var(--amber)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.facts div{background:var(--glass2);border-radius:8px;padding:8px 10px}
+.facts span{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.facts b{font-family:var(--mono);font-size:16px;font-weight:500}
+.go{align-self:flex-start;background:var(--amber);color:#1a1205;border:0;border-radius:10px;padding:13px 30px;font-weight:800;font-size:17px;letter-spacing:.03em}
+.how{display:grid;grid-template-columns:28px 1fr;gap:6px 8px;font-size:14px;color:#c9ced6}
+.big{font-family:var(--mono);font-size:44px;line-height:1}
+.stars{font-size:28px;letter-spacing:4px;color:var(--amber)}
+.log{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#c9ced6;max-height:200px;overflow:auto}
+.log div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:4px 0}
+.log span:last-child{font-family:var(--mono);white-space:nowrap}
+#toasts{position:fixed;z-index:15;top:76px;left:16px;display:flex;flex-direction:column;gap:6px;pointer-events:none;max-width:min(380px,calc(100% - 32px))}
+.toast{padding:9px 12px;border-radius:9px;background:var(--glass);border:1px solid var(--line);font-size:13.5px;animation:tin .25s ease-out}
+.toast.bad{border-color:rgba(255,93,93,.6)} .toast.good{border-color:rgba(65,201,138,.6)}
+@keyframes tin{from{opacity:0;transform:translateY(-6px)}}
+#hint{position:fixed;z-index:3;left:16px;bottom:14px;font-size:12px;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+[hidden]{display:none!important}
+@media (max-width:760px){
+  #top{gap:4px 12px} #top .brand{width:100%;font-size:14px}
+  .stat b{font-size:13px}
+  #panel{left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));width:auto;height:44vh}
+  #hint{display:none} #toasts{top:96px}
+  .facts{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<header id="top">
+  <div class="brand"><i></i>Svensson Bygg · Villa, Täby</div>
+  <div class="stat"><span>Week</span><b id="sWeek">1 / 20</b></div>
+  <div class="stat"><span>Spent</span><b id="sSpent">0</b></div>
+  <div class="stat"><span>Profit forecast</span><b id="sProfit">0</b></div>
+  <div class="stat"><span>Reputation</span><b id="sRep">★★★☆☆</b></div>
+</header>
+
+<aside id="panel" aria-label="Site office">
+  <div class="sec"><h3><span>Forecast</span><span id="month">August</span></h3><div class="fc" id="fc"></div></div>
+  <div class="sec"><h3><span>Schedule</span><span id="workRate"></span></h3><div id="phases"></div>
+    <div class="proj"><span>Handover</span><b id="proj">week 20</b></div></div>
+  <div class="sec"><h3><span>Site</span></h3>
+    <div class="ctrl"><div class="l"><b>Crew</b><small id="crewCost"></small></div>
+      <div class="step"><button id="crewMinus" aria-label="Fewer workers">−</button><b id="crewN">8</b><button id="crewPlus" aria-label="More workers">+</button></div></div>
+    <div class="ctrl"><div class="l"><b>Overtime</b><small>+30% work · wages ×1.5 · tires crew</small></div><button class="tog" id="tOt" aria-pressed="false" aria-label="Overtime"></button></div>
+    <div class="ctrl"><div class="l"><b>Tarps &amp; covers</b><small>25k once + 3k/wk · keeps frame dry</small></div><button class="tog" id="tTarp" aria-pressed="false" aria-label="Tarps"></button></div>
+    <div class="ctrl"><div class="l"><b>Winter tent + heat</b><small>60k once + 10k/wk · work in frost</small></div><button class="tog" id="tTent" aria-pressed="false" aria-label="Winter tent"></button></div>
+    <div class="ctrl"><div class="l"><b>Crew morale</b><small id="moraleTxt"></small></div><div class="meter"><i id="moraleBar"></i></div></div>
+  </div>
+  <div id="tip"><div class="face">L</div><div id="tipTxt">Welcome to the site.</div></div>
+  <div id="speed"><button data-s="0" aria-label="Pause">❚❚</button><button data-s="1" aria-pressed="true" aria-label="Normal speed">▶</button><button data-s="2.5" aria-label="Fast">▶▶</button></div>
+</aside>
+
+<div id="toasts"></div>
+<div id="hint">Drag to rotate · scroll or pinch to zoom</div>
+
+<div class="ov" id="brief">
+  <div class="card">
+    <div class="ey">New contract · Year 2</div>
+    <h2>Two-storey villa in Täby</h2>
+    <p>165 m² family house on a sloping plot. You won the bid. Now build it on time and on budget, through autumn into winter.</p>
+    <div class="facts">
+      <div><span>Contract</span><b>3.65M</b></div><div><span>Deadline</span><b>20 weeks</b></div><div><span>Late fee</span><b>40k/wk</b></div>
+    </div>
+    <div class="how">
+      <span>👷</span><span>Set your <b>crew size</b>. More people = faster, but wages eat profit.</span>
+      <span>🌧</span><span>Watch the <b>forecast</b>. Rain and frost slow some work and damage an open frame.</span>
+      <span>⚠️</span><span><b>Surprises will happen.</b> Each choice has a cost, a delay or a risk.</span>
+      <span>🧑‍🔧</span><span>Lasse, your foreman, gives advice. You decide.</span>
+    </div>
+    <button class="go" id="start">Break ground</button>
+  </div>
+</div>
+
+<div class="ov" id="event" hidden>
+  <div class="card">
+    <div class="ey" id="evWhen">Week 3</div>
+    <h2 id="evTitle"></h2>
+    <p id="evText"></p>
+    <div class="advice" id="evAdvice"></div>
+    <div class="opts" id="evOpts"></div>
+  </div>
+</div>
+
+<div class="ov" id="end" hidden>
+  <div class="card">
+    <div class="ey">Handover</div>
+    <h2 id="endTitle"></h2>
+    <div class="stars" id="endStars"></div>
+    <div class="facts">
+      <div><span>Profit</span><b id="endProfit"></b></div><div><span>Finished</span><b id="endWeek"></b></div><div><span>Reputation</span><b id="endRep"></b></div>
+    </div>
+    <div class="log" id="endLog"></div>
+    <p id="endNote"></p>
+    <button class="go" id="again">New job (new weather &amp; surprises)</button>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* =====================================================================
+   SIMULATION (pure, no rendering)
+   ===================================================================== */
+const PHASES = [
+  { id:'dig',    name:'Excavation',      icon:'⛏️', work:9,  mat:60000,  rain:.5,  frost:.3 },
+  { id:'found',  name:'Foundation',      icon:'🧱', work:16, mat:240000, rain:.35, frost:0  },
+  { id:'frame',  name:'Frame',           icon:'🪵', work:36, mat:420000, rain:.75, frost:.8 },
+  { id:'roof',   name:'Roof',            icon:'🏠', work:18, mat:200000, rain:.5,  frost:.6 },
+  { id:'facade', name:'Facade & windows',icon:'🪟', work:25, mat:260000, rain:.6,  frost:.45 },
+  { id:'inside', name:'Interior',        icon:'🛋️', work:32, mat:300000, rain:1,   frost:1  },
+];
+const CONTRACT = 3650000, DEADLINE = 20, LATE_FEE = 40000, WAGE = 8000, EQUIP = 12000;
+const WX = { sun:{i:'☀️',n:'Sunny'}, cloud:{i:'⛅',n:'Cloudy'}, rain:{i:'🌧️',n:'Rain'}, storm:{i:'🌬️',n:'Storm'}, frost:{i:'🥶',n:'Frost'}, snow:{i:'🌨️',n:'Snow'} };
+const MONTHS = ['August','September','October','November','December','January'];
+const MONTH_P = [ // rain, storm, frost, snow
+  [.25,.02,0,0],[.33,.04,0,0],[.40,.08,.05,0],[.40,.08,.18,.08],[.22,.05,.35,.25],[.15,.05,.4,.3]];
+const monthOf = w => Math.min(5, Math.floor((w*7+15)/30.4));
+function mulberry(a){ return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+let rnd = Math.random;
+function sampleWx(w){ const [r,st,fr,sn]=MONTH_P[monthOf(w)]; let x=rnd();
+  if((x-=sn)<0) return 'snow'; if((x-=fr)<0) return 'frost'; if((x-=st)<0) return 'storm'; if((x-=r)<0) return 'rain';
+  return rnd()<.35 ? 'cloud' : 'sun'; }
+const FC_ACC = [.9,.75,.62,.52,.45];
+
+let S;
+function newGame(seed){
+  rnd = mulberry(seed ?? (Math.random()*1e9|0));
+  S = { week:0, crew:8, ot:false, tarp:false, tent:false, tarpBought:false, tentBought:false, morale:85,
+        sick:0, sickW:0, temps:0, restrictW:0, craneDown:0, winDelay:0, frameDelay:0,
+        phase:0, prog:PHASES.map(()=>0), work:PHASES.map(p=>p.work), matPaid:PHASES.map(()=>false),
+        spent:0, revenue:CONTRACT, rep:3, moisture:0, slabRisk:false, lumber:'none', fired:new Set(), log:[], done:false,
+        weather:[], fc:[], wetWeeks:0 };
+  for(let w=0;w<40;w++) S.weather.push(sampleWx(w));
+  for(let w=0;w<40;w++){ S.fc.push([]); for(let d=1;d<=5;d++) S.fc[w][d] = rnd()<FC_ACC[d-1] ? S.weather[w] : sampleWx(w); }
+  S.weather[0]='sun';
+  return S;
+}
+function pay(n,why){ S.spent+=n; if(why) S.log.push([`W${S.week+1}`,why,-n]); }
+function earn(n,why){ S.revenue+=n; S.log.push([`W${S.week+1}`,why,n]); }
+function effCrew(s=S){ const n=Math.max(0,s.crew-s.sick)+s.temps; return n*(s.ot?1.3:1)*(.6+.4*s.morale/100)*(s.restrictW>0?.85:1); }
+function phaseFactor(i,wx,s=S){
+  const ph=PHASES[i]; let f=1;
+  if(wx==='rain') f=ph.rain; else if(wx==='storm') f=ph.rain*.7; else if(wx==='frost') f=ph.frost; else if(wx==='snow') f=Math.min(ph.frost,ph.rain);
+  if(s.tarp && (ph.id==='frame'||ph.id==='roof') && wx!=='sun' && wx!=='cloud') f=Math.max(f,.9);
+  if(s.tent && (ph.id==='dig'||ph.id==='found'||ph.id==='facade') && wx!=='sun' && wx!=='cloud') f=Math.max(f,.9);
+  if(ph.id==='inside') f=1;
+  if((ph.id==='frame'||ph.id==='roof') && s.craneDown>0) f*=.5;
+  if(ph.id==='frame' && s.frameDelay>0) f*=.3;
+  if(ph.id==='facade' && s.winDelay>0) f*=.35;
+  return f;
+}
+function weeklyCost(s=S){ return s.crew*WAGE*(s.ot?1.5:1) + s.temps*13000 + EQUIP + (s.tarp?3000:0) + (s.tent?10000:0); }
+function remainingWork(){ let r=0; for(let i=S.phase;i<6;i++) r+=S.work[i]-S.prog[i]; return r; }
+function projection(){
+  // expected weeks to finish, using the forecast for the next weeks and season averages after
+  let w=S.week, rem=PHASES.map((p,i)=>S.work[i]-S.prog[i]), ph=S.phase, guard=0;
+  const sim={...S, craneDown:S.craneDown, winDelay:S.winDelay, frameDelay:S.frameDelay};
+  while(ph<6 && guard++<60){
+    const d=w-S.week; const wx = d===0 ? S.weather[w] : d<=5 ? S.fc[w][d] : null;
+    let units=effCrew(sim);
+    while(units>0.001 && ph<6){
+      let f = wx ? phaseFactor(ph,wx,sim) : avgFactor(ph,w,sim);
+      if(f<=0){ break; } const can=units*f;
+      if(can>=rem[ph]){ units-=rem[ph]/f; rem[ph]=0; ph++; } else { rem[ph]-=can; units=0; }
+    }
+    sim.craneDown=Math.max(0,sim.craneDown-1); sim.winDelay=Math.max(0,sim.winDelay-1); sim.frameDelay=Math.max(0,sim.frameDelay-1);
+    w++;
+  }
+  const weeks=w; const late=Math.max(0,weeks-DEADLINE);
+  let matLeft=0; for(let i=0;i<6;i++) if(!S.matPaid[i]) matLeft+=PHASES[i].mat*(i===2&&S.lumber==='wait'?1.15:1);
+  const profit = S.revenue - S.spent - matLeft - (weeks-S.week)*weeklyCost() - late*LATE_FEE;
+  return { weeks, late, profit };
+}
+function avgFactor(i,w,s){ const P=MONTH_P[monthOf(w)]; const wet=P[0]+P[1], fr=P[2]+P[3];
+  return (1-wet-fr)*phaseFactor(i,'sun',s) + P[0]*phaseFactor(i,'rain',s) + P[1]*phaseFactor(i,'storm',s) + P[2]*phaseFactor(i,'frost',s) + P[3]*phaseFactor(i,'snow',s); }
+
+function stepWeek(){
+  const wx=S.weather[S.week];
+  let units=effCrew();
+  while(units>0.001 && S.phase<6){
+    const i=S.phase;
+    if(!S.matPaid[i]){ startPhase(i); }
+    const f=phaseFactor(i,wx); if(f<=0) break;
+    const need=S.work[i]-S.prog[i], can=units*f;
+    if(can>=need){ S.prog[i]=S.work[i]; units-=need/f; S.phase++; toast(`${PHASES[i].icon} ${PHASES[i].name} done`,'good'); }
+    else { S.prog[i]+=can; units=0; }
+  }
+  pay(weeklyCost());
+  const wet = wx==='rain'||wx==='storm'||wx==='snow';
+  if(wet && (S.phase===2||S.phase===3) && !S.tarp){ S.moisture++; toast('💧 Rain soaked the open frame','bad'); }
+  S.morale = Math.max(15, Math.min(100, S.morale + (S.ot?-12:6)));
+  if(S.sickW>0 && --S.sickW===0){ S.sick=0; S.temps=0; }
+  S.restrictW=Math.max(0,S.restrictW-1); S.craneDown=Math.max(0,S.craneDown-1); S.winDelay=Math.max(0,S.winDelay-1); S.frameDelay=Math.max(0,S.frameDelay-1);
+  S.week++;
+  if(S.phase>=6){ finish(); return null; }
+  return pickEvent();
+}
+function startPhase(i){
+  S.matPaid[i]=true; let cost=PHASES[i].mat;
+  if(i===2){
+    if(S.lumber==='bought') cost=0;
+    else if(S.lumber==='wait'){ if(rnd()<.7){ cost*=1.25; toast('📈 Lumber price went up 25%','bad'); } else toast('📉 Lumber price held. Lucky.','good'); }
+    else if(S.lumber==='lock'){ if(rnd()<.35){ S.frameDelay=1; toast('🚚 Locked supplier delivers a week late','bad'); } }
+  }
+  if(cost) pay(Math.round(cost),'Materials: '+PHASES[i].name);
+}
+function finish(){
+  S.done=true; const late=Math.max(0,S.week-DEADLINE);
+  if(late) pay(late*LATE_FEE,`Late fee: ${late} week${late>1?'s':''}`);
+  if(S.slabRisk && rnd()<.25){ pay(150000,'Crack in slab (warranty)'); S.rep-=1; S.crack=true; }
+  if(S.moisture>=2 && rnd()<.5){ pay(90000,'Mould claim from client'); S.rep-=1; S.mould=true; }
+  if(!late && !S.crack && !S.mould) S.rep+=.5;
+  if(late>2) S.rep-=.5;
+  S.rep=Math.max(0,Math.min(5,S.rep));
+}
+
+/* ---------- events ---------- */
+const nowPh = s => PHASES[s.phase]?.id;
+const frac = (s,i) => s.prog[i]/s.work[i];
+const EVENTS = [
+  { id:'storm', icon:'🌬️', when:s=>s.fc[s.week]?.[1]==='storm' || s.weather[s.week]==='storm', chance:1, repeat:true,
+    title:'Storm warning for this week',
+    text:s=>`Gusts up to 25 m/s. Loose sheets, scaffolding and stacked material can blow around.`,
+    advice:s=>`Lasse: "Strapping everything down takes a day. A blown scaffold costs far more."`,
+    rec:()=>0,
+    options:[
+      { label:'Secure the site', info:'20k', apply:s=>{ pay(20000,'Storm prep'); } },
+      { label:'Risk it', info:'40%: 60k damage + delay', apply:s=>{ if(rnd()<.4){ pay(60000,'Storm damage'); s.work[s.phase]+=3; toast('💥 The storm tore down sheeting and scaffold','bad'); } else toast('😮‍💨 The storm passed without damage','good'); } } ] },
+  { id:'clay', icon:'⚠️', when:s=>s.phase===0 && frac(s,0)>.25, chance:.75,
+    title:'Soft clay under the north corner',
+    text:s=>`The excavator hit 2 m of clay. A slab built on it as it is will crack within a few years.`,
+    advice:s=>`Lasse: "Piles are the safe call. A thicker slab usually works, but if it cracks, it's on our warranty."`,
+    rec:()=>0,
+    options:[
+      { label:'Drive piles', info:'180k · +1 week', apply:s=>{ pay(180000,'Piling'); s.work[0]+=7; } },
+      { label:'Thicker slab', info:'70k · 25% crack later', apply:s=>{ pay(70000,'Thicker slab'); s.work[1]+=2; s.slabRisk=true; } },
+      { label:'Ask the client to pay', info:'50/50 · may annoy', apply:s=>{ s.work[0]+=7; if(rnd()<.5){ toast('🤝 Client agreed to pay for the piles','good'); } else { pay(180000,'Piling (client refused)'); s.work[0]+=2; s.rep-=.5; toast('😠 Client refused. You pay, and they are annoyed','bad'); } } } ] },
+  { id:'lumber', icon:'📈', when:s=>s.week>=2 && s.phase<=1, chance:.85,
+    title:'Lumber prices are about to jump',
+    text:s=>`Your supplier warns that prices may rise ~25% within weeks. Framing starts ${s.phase===0?'in a few weeks':'soon'} and costs 420k.`,
+    advice:s=>`Lasse: "Buying now means storing it. Without covers, wet lumber is trouble."`,
+    rec:s=>s.tarp?0:2,
+    options:[
+      { label:'Buy all lumber now', info:'420k now + 25k storage', apply:s=>{ s.lumber='bought'; s.matPaid[2]=false; pay(420000+25000,'Lumber bought early'); } },
+      { label:'Wait and see', info:'70%: +25% price', apply:s=>{ s.lumber='wait'; } },
+      { label:'Lock price with deposit', info:'20k · 35%: late delivery', apply:s=>{ s.lumber='lock'; pay(20000,'Price-lock deposit'); } } ] },
+  { id:'neighbor', icon:'🏡', when:s=>s.phase<=2 && s.week>=1, chance:.12,
+    title:'Neighbours complain about noise',
+    text:s=>`Work starts at 07:00 and the family next door has a newborn. They have called the municipality.`,
+    advice:s=>`Lasse: "Ignoring them can get us a fine. Starting later costs us speed for a few weeks."`,
+    rec:()=>1,
+    options:[
+      { label:'Start at 09:00', info:'−15% speed · 3 weeks', apply:s=>{ s.restrictW=3; } },
+      { label:'Put up noise screens', info:'30k', apply:s=>{ pay(30000,'Noise screens'); } },
+      { label:'Ignore it', info:'40%: 50k fine', apply:s=>{ if(rnd()<.4){ pay(50000,'Municipal fine'); s.rep-=.5; toast('📄 The municipality fined you 50k','bad'); } } } ] },
+  { id:'inspect', icon:'🔍', when:s=>s.phase===2 && frac(s,2)>.55, chance:1,
+    title:'Building inspector visits next week',
+    text:s=> s.moisture>=2 ? `The frame has been rained on ${s.moisture} weeks. Your moisture meter reads 24%. Wood must be under 18% before closing walls.`
+                           : s.moisture===1 ? `The frame got wet once. Moisture is borderline, around 19%.` : `Routine frame inspection. Everything looks dry and straight.`,
+    advice:s=> s.moisture>=2 ? `Lasse: "If we fail, we tear off sheeting and dry it anyway. That costs more."` : s.moisture===1 ? `Lasse: "Probably fine. Drying is cheap insurance."` : `Lasse: "We're in good shape. No need to spend money."`,
+    rec:s=>s.moisture>=1?0:1,
+    options:[
+      { label:'Dry out & double-check', info:'35k · slower 1 week', apply:s=>{ pay(35000,'Dehumidifiers'); s.work[2]+=3; s.moisture=0; } },
+      { label:'Go as is', info:'risk if wet', apply:s=>{ const p = s.moisture>=2?.6 : s.moisture===1?.2 : 0;
+          if(rnd()<p){ pay(120000,'Failed inspection: rework'); s.work[2]+=8; s.rep-=.5; s.moisture=0; toast('❌ Failed inspection. Sheeting off, dry, redo','bad'); }
+          else toast('✅ Inspection passed','good'); } } ] },
+  { id:'change', icon:'📝', when:s=>(s.phase===2&&frac(s,2)>.3)||s.phase===3, chance:.55,
+    title:'The client wants changes',
+    text:s=>`A bigger terrace and a skylight over the stairs. That's more work, but also more money.`,
+    advice:s=>{ const p=projection(); return p.late>0 ? `Lasse: "We're already ${p.late} week${p.late>1?'s':''} behind. More work makes it worse unless we add crew."` : `Lasse: "We have some slack in the schedule. It's decent money."`; },
+    rec:s=>projection().late>1?1:2,
+    options:[
+      { label:'Accept: +260k', info:'+6 units of work', apply:s=>{ earn(260000,'Change order'); s.work[s.phase]+=6; } },
+      { label:'Decline politely', info:'client a bit sour', apply:s=>{ s.rep-=.25; } },
+      { label:'Counter-offer: 380k', info:'50% they agree', apply:s=>{ if(rnd()<.5){ earn(380000,'Change order (negotiated)'); s.work[s.phase]+=6; toast('🤝 Client accepted 380k','good'); } else { s.rep-=.25; toast('🙅 Client said no to 380k','bad'); } } } ] },
+  { id:'crane', icon:'🏗️', when:s=>s.phase===2||s.phase===3, chance:.18,
+    title:'Crane gearbox failure',
+    text:s=>`The tower crane is stuck. Repair is free under warranty but takes 2 weeks. Lifting by hand halves the pace.`,
+    advice:s=>{ const p=projection(); return p.late>0 ? `Lasse: "We can't afford two slow weeks. Rent a mobile crane."` : `Lasse: "We have slack. Waiting is fine."`; },
+    rec:s=>projection().late>0?1:0,
+    options:[
+      { label:'Wait for repair', info:'half speed 2 weeks', apply:s=>{ s.craneDown=2; } },
+      { label:'Rent a mobile crane', info:'55k', apply:s=>{ pay(55000,'Mobile crane'); } } ] },
+  { id:'windows', icon:'🪟', when:s=>s.phase===4 && frac(s,4)<.3, chance:.6,
+    title:'Windows are 2 weeks late',
+    text:s=>`The factory had a fire alarm shutdown. The facade can't be closed without windows.`,
+    advice:s=>{ const p=projection(); return p.late>0||S.week>14 ? `Lasse: "Express is expensive, but late fees are 40k a week."` : `Lasse: "We can live with it if the rest goes well."`; },
+    rec:s=>(projection().late>0||s.week>14)?1:0,
+    options:[
+      { label:'Wait for them', info:'facade slow 2 weeks', apply:s=>{ s.winDelay=2; } },
+      { label:'Pay for express', info:'45k', apply:s=>{ pay(45000,'Express windows'); } },
+      { label:'Front windows first', info:'20k · slow 1 week', apply:s=>{ pay(20000,'Split delivery'); s.winDelay=1; } } ] },
+  { id:'sick', icon:'🤒', when:s=>s.sick===0, chance:s=>s.morale<55?.45:.06,
+    title:'Two carpenters are off sick',
+    text:s=> s.morale<55 ? `The crew is exhausted after the overtime. Two of them are out for 2 weeks.` : `A stomach bug. Two of them are out for 2 weeks.`,
+    advice:s=>`Lasse: "Temps cost more per week but keep the pace."`,
+    rec:s=>projection().late>0?0:1,
+    options:[
+      { label:'Hire 2 temps', info:'13k each/week', apply:s=>{ s.sick=2; s.sickW=2; s.temps=2; } },
+      { label:'Manage without them', info:'−2 workers · 2 weeks', apply:s=>{ s.sick=2; s.sickW=2; } } ] },
+];
+function pickEvent(){
+  const order=[EVENTS[0], ...EVENTS.slice(1).sort(()=>rnd()-.5)];
+  for(const e of order){
+    if(!e.repeat && S.fired.has(e.id)) continue;
+    if(e.repeat && S.fired.has(e.id+S.week)) continue;
+    if(!e.when(S)) continue;
+    const ch = typeof e.chance==='function'?e.chance(S):e.chance;
+    if(rnd()<ch){ S.fired.add(e.repeat?e.id+S.week:e.id); return e; }
+  }
+  return null;
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));
+renderer.setSize(innerWidth,innerHeight);
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=.5;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.3,3000);
+camera.position.set(26,17,30);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,2.5,0); controls.enableDamping=true; controls.minDistance=10; controls.maxDistance=80; controls.maxPolarAngle=1.45;
+controls.autoRotate=true; controls.autoRotateSpeed=.35;
+controls.addEventListener('start',()=>{ controls.autoRotate=false; });
+const composer=new EffectComposer(renderer); composer.addPass(new RenderPass(scene,camera));
+const gtao=new GTAOPass(scene,camera,innerWidth,innerHeight); gtao.updateGtaoMaterial({ radius:1.2, distanceExponent:1.5, thickness:2, scale:1.2 }); composer.addPass(gtao); composer.addPass(new OutputPass());
+let useFx = innerWidth>760;
+function resize(){ renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight;
+  camera.fov = camera.aspect<.8 ? 58 : 42; camera.updateProjectionMatrix(); }
+addEventListener('resize',resize); resize();
+
+// ---- sky, sun, environment ----
+const sky=new Sky(); sky.scale.setScalar(5000); scene.add(sky);
+const skyU=sky.material.uniforms; skyU.mieCoefficient.value=.005; skyU.mieDirectionalG.value=.8;
+const sunDir=new THREE.Vector3().setFromSphericalCoords(1,THREE.MathUtils.degToRad(90-24),THREE.MathUtils.degToRad(215));
+skyU.sunPosition.value.copy(sunDir);
+const sunL=new THREE.DirectionalLight(0xffe8c8,4.6); sunL.position.copy(sunDir).multiplyScalar(80); sunL.castShadow=true;
+sunL.shadow.mapSize.set(2048,2048); const sc=sunL.shadow.camera; sc.left=-34; sc.right=34; sc.top=34; sc.bottom=-34; sc.near=10; sc.far=200; sunL.shadow.bias=-.0004; sunL.shadow.normalBias=.03;
+scene.add(sunL);
+const hemi=new THREE.HemisphereLight(0xcfe3ff,0x4a3d2a,.45); scene.add(hemi);
+scene.fog=new THREE.Fog(0xcad6e2,70,320);
+const pmrem=new THREE.PMREMGenerator(renderer);
+const envScene=new THREE.Scene(); const envSky=new Sky(); envSky.scale.setScalar(1000); envScene.add(envSky);
+let envRT=null;
+function setSky(over){ // over: 0 clear .. 1 overcast
+  for(const u of [skyU, envSky.material.uniforms]){ u.turbidity.value=3+over*14; u.rayleigh.value=1.2+over*2.2; u.mieCoefficient.value=.005+over*.03; u.mieDirectionalG.value=.8; u.sunPosition.value.copy(sunDir); }
+  if(envRT) envRT.dispose(); envRT=pmrem.fromScene(envScene); scene.environment=envRT.texture;
+}
+setSky(0);
+
+// ---- procedural textures ----
+function tex(w,h,draw,rep){ const c=document.createElement('canvas'); c.width=w; c.height=h; draw(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; if(rep) t.repeat.set(rep[0],rep[1]); return t; }
+function speckle(g,w,h,base,cols,n,smin,smax){ g.fillStyle=base; g.fillRect(0,0,w,h);
+  for(let i=0;i<n;i++){ g.fillStyle=cols[(Math.random()*cols.length)|0]; g.globalAlpha=.25+Math.random()*.5; const s=smin+Math.random()*(smax-smin); g.fillRect(Math.random()*w,Math.random()*h,s,s*(.5+Math.random())); } g.globalAlpha=1; }
+const grassT=tex(1024,1024,(g,w,h)=>{ speckle(g,w,h,'#5f7a3c',['#4c6a2e','#728f45','#86a052','#56702f','#3f5a26'],60000,1,4);
+  for(let i=0;i<60;i++){ const x=Math.random()*w,y=Math.random()*h,r=40+Math.random()*140; const gr=g.createRadialGradient(x,y,0,x,y,r);
+    const c=Math.random()<.5?'rgba(120,140,60,':'rgba(40,60,25,'; gr.addColorStop(0,c+'.28)'); gr.addColorStop(1,c+'0)'); g.fillStyle=gr; g.fillRect(x-r,y-r,2*r,2*r); } },[1/24,1/24]);
+const dirtT=tex(256,256,(g,w,h)=>speckle(g,w,h,'#6e5a42',['#5a4733','#806a4f','#4d3d2c','#8f7a5c'],4000,1,5),[1/4,1/4]);
+const gravelT=tex(256,256,(g,w,h)=>speckle(g,w,h,'#8d8a83',['#6f6c66','#a9a59c','#5d5a55','#bdb8ad'],6000,1,3),[1/3,1/3]);
+const concT=tex(256,256,(g,w,h)=>speckle(g,w,h,'#a7a8a5',['#9a9b98','#b5b6b2','#8e8f8b'],3000,1,3),[1/3,1/3]);
+const asphT=tex(256,256,(g,w,h)=>speckle(g,w,h,'#3b3d40',['#2f3134','#47494c','#55575a'],5000,1,2),[1/4,1/4]);
+const woodT=tex(64,256,(g,w,h)=>{ g.fillStyle='#c9a26b'; g.fillRect(0,0,w,h); for(let i=0;i<40;i++){ g.strokeStyle=`rgba(120,80,40,${.1+Math.random()*.2})`; g.beginPath(); const x=Math.random()*w; g.moveTo(x,0); g.bezierCurveTo(x+4,h/3,x-4,h*2/3,x,h); g.stroke(); } });
+const claddingT=tex(256,256,(g,w,h)=>{ g.fillStyle='#8e2a1f'; g.fillRect(0,0,w,h); for(let x=0;x<w;x+=32){ g.fillStyle='rgba(0,0,0,.28)'; g.fillRect(x,0,3,h); g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(x+4,0,10,h); }
+  for(let i=0;i<300;i++){ g.fillStyle=`rgba(0,0,0,${Math.random()*.08})`; g.fillRect(Math.random()*w,Math.random()*h,2,8); } });
+const roofT=tex(256,256,(g,w,h)=>{ g.fillStyle='#2b2d31'; g.fillRect(0,0,w,h); for(let y=0;y<h;y+=16){ g.fillStyle='rgba(0,0,0,.35)'; g.fillRect(0,y,w,2);
+  for(let x=(y/16%2)*16;x<w;x+=32){ g.fillStyle='rgba(255,255,255,.04)'; g.fillRect(x,y+2,30,13); } } });
+const latticeT=tex(64,64,(g,w,h)=>{ g.clearRect(0,0,w,h); g.strokeStyle='#f0c419'; g.lineWidth=6; g.strokeRect(3,3,w-6,h-6); g.lineWidth=4; g.beginPath(); g.moveTo(3,3); g.lineTo(w-3,h-3); g.stroke(); });
+const fenceT=tex(64,64,(g,w,h)=>{ g.clearRect(0,0,w,h); g.strokeStyle='#c8ccd0'; g.lineWidth=2; for(let i=0;i<=w;i+=8){ g.beginPath(); g.moveTo(i,0); g.lineTo(i,h); g.stroke(); g.beginPath(); g.moveTo(0,i); g.lineTo(w,i); g.stroke(); } });
+const dotT=tex(32,32,(g)=>{ const r=g.createRadialGradient(16,16,0,16,16,16); r.addColorStop(0,'#fff'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=r; g.fillRect(0,0,32,32); });
+
+const M = {
+  grass:new THREE.MeshStandardMaterial({ map:grassT, roughness:.95 }),
+  dirt:new THREE.MeshStandardMaterial({ map:dirtT, roughness:1 }),
+  gravel:new THREE.MeshStandardMaterial({ map:gravelT, roughness:1 }),
+  conc:new THREE.MeshStandardMaterial({ map:concT, roughness:.85 }),
+  asph:new THREE.MeshStandardMaterial({ map:asphT, roughness:.9 }),
+  wood:new THREE.MeshStandardMaterial({ map:woodT, roughness:.8 }),
+  osb:new THREE.MeshStandardMaterial({ color:0xcfae7a, roughness:.85 }),
+  clad:new THREE.MeshStandardMaterial({ map:claddingT, roughness:.75 }),
+  trim:new THREE.MeshStandardMaterial({ color:0xf3f1ea, roughness:.5 }),
+  roof:new THREE.MeshStandardMaterial({ map:roofT, roughness:.6, metalness:.1 }),
+  glass:new THREE.MeshStandardMaterial({ color:0x22303d, roughness:.05, metalness:.3, emissive:0xffc879, emissiveIntensity:0 }),
+  steel:new THREE.MeshStandardMaterial({ color:0x9aa1a8, roughness:.4, metalness:.8 }),
+  yellow:new THREE.MeshStandardMaterial({ color:0xf0b412, roughness:.45, metalness:.2 }),
+  dark:new THREE.MeshStandardMaterial({ color:0x24262a, roughness:.7 }),
+  lattice:new THREE.MeshStandardMaterial({ map:latticeT, alphaTest:.5, side:THREE.DoubleSide, roughness:.5, metalness:.3 }),
+  fence:new THREE.MeshStandardMaterial({ map:fenceT, alphaTest:.4, side:THREE.DoubleSide, roughness:.4, metalness:.6 }),
+  white:new THREE.MeshStandardMaterial({ color:0xe9e6df, roughness:.6 }),
+  vest:new THREE.MeshStandardMaterial({ color:0xff7a1a, roughness:.6 }),
+  helmet:new THREE.MeshStandardMaterial({ color:0xffd21a, roughness:.35 }),
+  skin:new THREE.MeshStandardMaterial({ color:0xd9a77f, roughness:.7 }),
+  jeans:new THREE.MeshStandardMaterial({ color:0x2e3a52, roughness:.8 }),
+  pine:new THREE.MeshStandardMaterial({ color:0x2f4a2a, roughness:.9 }),
+  birchLeaf:new THREE.MeshStandardMaterial({ color:0x6f9a3a, roughness:.9 }),
+  bark:new THREE.MeshStandardMaterial({ color:0x4a3a2c, roughness:1 }),
+  birchBark:new THREE.MeshStandardMaterial({ color:0xe8e4da, roughness:.9 }),
+};
+const box=new THREE.BoxGeometry(1,1,1);
+function mesh(geo,mat,x=0,y=0,z=0,sx=1,sy=1,sz=1,parent=scene,shadow=true){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.scale.set(sx,sy,sz);
+  m.castShadow=shadow; m.receiveShadow=true; parent.add(m); return m; }
+function shapeWithHole(W,H,hw,hh){ const s=new THREE.Shape(); s.moveTo(-W/2,-H/2); s.lineTo(W/2,-H/2); s.lineTo(W/2,H/2); s.lineTo(-W/2,H/2); s.closePath();
+  if(hw){ const p=new THREE.Path(); p.moveTo(-hw/2,-hh/2); p.lineTo(-hw/2,hh/2); p.lineTo(hw/2,hh/2); p.lineTo(hw/2,-hh/2); p.closePath(); s.holes.push(p); }
+  const g=new THREE.ShapeGeometry(s); g.rotateX(-Math.PI/2); return g; }
+
+// ---- terrain ----
+const PIT_W=14, PIT_D=11, PIT_H=1.6;
+mesh(shapeWithHole(600,600,24,20),M.grass,0,0,0,1,1,1,scene,false);
+const plot=mesh(shapeWithHole(24,20,PIT_W,PIT_D),M.dirt,0,.01,0,1,1,1,scene,false);
+// pit walls + floor
+mesh(box,M.dirt,0,-PIT_H,0,PIT_W,.05,PIT_D,scene,false);
+for(const [x,z,w,d] of [[0,-PIT_D/2,PIT_W,.1],[0,PIT_D/2,PIT_W,.1],[-PIT_W/2,0,.1,PIT_D],[PIT_W/2,0,.1,PIT_D]]) mesh(box,M.dirt,x,-PIT_H/2,z,w,PIT_H,d,scene,false);
+const soil=mesh(box,M.dirt,0,0,0,PIT_W,1,PIT_D,scene,false);   // unexcavated soil, shrinks while digging
+const soilTop=mesh(shapeWithHole(PIT_W,PIT_D),M.grass,0,0,0,1,1,1,scene,false);
+const backfill=mesh(shapeWithHole(PIT_W,PIT_D,12,9),M.gravel,0,.02,0,1,1,1,scene,false); backfill.visible=false;
+const dirtPile=new THREE.Mesh(new THREE.ConeGeometry(4,2.6,18),M.dirt); dirtPile.position.set(-10,0,6); dirtPile.castShadow=dirtPile.receiveShadow=true; scene.add(dirtPile);
+// road, driveway
+mesh(box,M.asph,0,-.04,22,600,.1,8,scene,false);
+const dash=new THREE.InstancedMesh(box,M.white,60); for(let i=0;i<60;i++){ const m=new THREE.Matrix4().compose(new THREE.Vector3(-300+i*10,.02,22),new THREE.Quaternion(),new THREE.Vector3(3,.02,.18)); dash.setMatrixAt(i,m); } scene.add(dash);
+mesh(box,M.gravel,4,-.02,14,4,.06,8,scene,false);
+// fence
+{ const posts=[]; const pts=[]; const X=11.5, Z=9.5;
+  for(let x=-X;x<=X;x+=3.5){ pts.push([x,-Z],[x,Z]); } for(let z=-Z+3.5;z<Z;z+=3.5){ pts.push([-X,z],[X,z]); }
+  const pg=new THREE.CylinderGeometry(.04,.04,2,6); const inst=new THREE.InstancedMesh(pg,M.steel,pts.length);
+  pts.forEach(([x,z],i)=>inst.setMatrixAt(i,new THREE.Matrix4().makeTranslation(x,1,z))); scene.add(inst);
+  const pl=new THREE.PlaneGeometry(1,1);
+  const panel=(x,z,len,rot)=>{ const m=new THREE.Mesh(pl,M.fence); fenceT.repeat.set(1,1); m.position.set(x,1,z); m.scale.set(len,1.9,1); m.rotation.y=rot; scene.add(m); };
+  panel(0,-Z,2*X,0); panel(-X,0,2*Z,Math.PI/2); panel(X,0,2*Z,Math.PI/2); panel(-X/2-1.5,Z,X-3,0); panel(X/2+3.5,Z,X-7,0);
+  fenceT.repeat.set(12,1);
+}
+// neighbour houses
+function simpleHouse(x,z,w,d,h,col,roofCol,rot){ const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=rot; scene.add(g);
+  mesh(box,new THREE.MeshStandardMaterial({color:col,roughness:.8}),0,h/2,0,w,h,d,g);
+  const s=new THREE.Shape(); s.moveTo(-d/2-.4,0); s.lineTo(d/2+.4,0); s.lineTo(0,d*.42); s.closePath();
+  const rg=new THREE.ExtrudeGeometry(s,{depth:w+.6,bevelEnabled:false}); rg.translate(0,0,-(w+.6)/2); rg.rotateY(Math.PI/2);
+  const r=new THREE.Mesh(rg,new THREE.MeshStandardMaterial({color:roofCol,roughness:.7})); r.position.y=h; r.castShadow=true; g.add(r);
+  for(const sx of [-w/4,w/4]){ mesh(box,M.trim,sx,h*.55,d/2+.03,1.36,1.36,.05,g,false); mesh(box,M.glass,sx,h*.55,d/2+.05,1.2,1.2,.05,g,false); }
+  for(const sx of [-w/4,w/4]){ mesh(box,M.trim,sx,h*.55,-d/2-.03,1.36,1.36,.05,g,false); mesh(box,M.glass,sx,h*.55,-d/2-.05,1.2,1.2,.05,g,false); }
+  for(const [cx,cz] of [[-1,-1],[1,-1],[-1,1],[1,1]]) mesh(box,M.trim,cx*(w/2+.02),h/2,cz*(d/2+.02),.18,h,.18,g,false);
+  mesh(box,M.dark,w*.25,h+d*.3,0,.7,1.8,.7,g); mesh(box,M.trim,0,1.05,d/2+.03,1.1,2.1,.06,g,false);
+  return g; }
+simpleHouse(-32,-4,10,8,5.6,0xe8d8a8,0x5a2a22,.1);
+simpleHouse(31,-6,11,8,5.8,0xf1efe8,0x2f3236,-.08);
+simpleHouse(-2,-34,12,9,5.6,0x9a3b2c,0x26282c,0);
+simpleHouse(36,40,10,8,5.4,0xd3dde3,0x40342e,.2);
+// trees
+const birchLeafs=[];
+{ const rngT=mulberry(7); const spots=[];
+  while(spots.length<90){ const x=(rngT()-.5)*170, z=(rngT()-.5)*170; if(Math.abs(x)<17&&Math.abs(z)<14) continue; if(z>16&&z<28) continue;
+    if(Math.hypot(x+32,z+4)<10||Math.hypot(x-31,z+6)<10||Math.hypot(x+2,z+34)<11||Math.hypot(x-36,z-40)<10) continue; spots.push([x,z,rngT()]); }
+  const pines=spots.filter(s=>s[2]<.6), birches=spots.filter(s=>s[2]>=.6);
+  const trunk=new THREE.CylinderGeometry(.18,.28,1,7); const cone=new THREE.ConeGeometry(1,1,9); const blob=new THREE.IcosahedronGeometry(1,1);
+  const pT=new THREE.InstancedMesh(trunk,M.bark,pines.length), pC=new THREE.InstancedMesh(cone,M.pine,pines.length*3);
+  const q=new THREE.Quaternion(), v=new THREE.Vector3(), sv=new THREE.Vector3(), mm=new THREE.Matrix4();
+  pines.forEach(([x,z,r],i)=>{ const h=9+r*14; pT.setMatrixAt(i,mm.compose(v.set(x,h*.2,z),q,sv.set(1,h*.4,1)));
+    for(let k=0;k<3;k++){ const hh=h*(.5-k*.08), y=h*(.35+k*.2); pC.setMatrixAt(i*3+k,mm.compose(v.set(x,y,z),q,sv.set(h*(.2-k*.04),hh,h*(.2-k*.04)))); } });
+  const pcol=new THREE.Color(); for(let i=0;i<pines.length*3;i++){ pcol.setHSL(.3+rngT()*.04,.28+rngT()*.12,.07+rngT()*.05); pC.setColorAt(i,pcol); } M.pine.color.set(0xffffff);
+  pT.castShadow=pC.castShadow=true; scene.add(pT,pC);
+  const bT=new THREE.InstancedMesh(trunk,M.birchBark,birches.length), bL=new THREE.InstancedMesh(blob,M.birchLeaf,birches.length*2);
+  birches.forEach(([x,z,r],i)=>{ const h=8+r*6; bT.setMatrixAt(i,mm.compose(v.set(x,h*.35,z),q,sv.set(.7,h*.7,.7)));
+    bL.setMatrixAt(i*2,mm.compose(v.set(x,h*.75,z),q,sv.set(h*.28,h*.34,h*.28))); bL.setMatrixAt(i*2+1,mm.compose(v.set(x+.8,h*.62,z-.5),q,sv.set(h*.2,h*.22,h*.2))); });
+  bT.castShadow=bL.castShadow=true; scene.add(bT,bL); birchLeafs.push(bL);
+}
+
+// ---- the house ----
+const HW=12, HD=9, FL=2.8, BASE=.3;
+const house=new THREE.Group(); scene.add(house);
+// foundation
+const formwork=new THREE.Group(); house.add(formwork);
+for(const [x,z,w,d] of [[0,-HD/2-.15,HW+.4,.08],[0,HD/2+.15,HW+.4,.08],[-HW/2-.15,0,.08,HD+.4],[HW/2+.15,0,.08,HD+.4]]) mesh(box,M.wood,x,-PIT_H/2+.2,z,w,PIT_H+.6,d,formwork);
+const gravelBed=mesh(box,M.gravel,0,-PIT_H+.15,0,HW+1,.3,HD+1,house,false);
+const slab=mesh(box,M.conc,0,0,0,HW,1,HD,house);
+// frame studs
+const studs=[]; for(let f=0;f<2;f++){ const y0=BASE+f*FL+(f?.25:0)+.05;
+  const per=[]; for(let x=-HW/2;x<=HW/2+.01;x+=.6){ per.push([x,-HD/2+.07,0]); per.push([x,HD/2-.07,0]); }
+  for(let z=-HD/2+.6;z<HD/2-.3;z+=.6){ per.push([-HW/2+.07,z,1]); per.push([HW/2-.07,z,1]); }
+  per.sort((a,b)=>Math.atan2(a[1],a[0])-Math.atan2(b[1],b[0])); per.forEach(p=>studs.push([p[0],y0,p[1],p[2]])); }
+const studMesh=new THREE.InstancedMesh(box,M.wood,studs.length); studMesh.castShadow=true; studMesh.receiveShadow=true;
+{ const m=new THREE.Matrix4(), q=new THREE.Quaternion(), qr=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2);
+  studs.forEach(([x,y,z,side],i)=>studMesh.setMatrixAt(i,m.compose(new THREE.Vector3(x,y+1.2,z),side?qr:q,new THREE.Vector3(.045,2.4,.145)))); }
+studMesh.count=0; house.add(studMesh);
+const plates=[]; for(let f=0;f<2;f++) for(const yy of [0,2.45]){ const y=BASE+f*FL+(f?.25:0)+yy+.03;
+  plates.push(mesh(box,M.wood,0,y,-HD/2+.07,HW,.05,.15,house), mesh(box,M.wood,0,y,HD/2-.07,HW,.05,.15,house), mesh(box,M.wood,-HW/2+.07,y,0,.15,.05,HD,house), mesh(box,M.wood,HW/2-.07,y,0,.15,.05,HD,house)); }
+const deck=mesh(box,M.osb,0,BASE+FL+.12,0,HW,.25,HD,house);
+// roof
+const ROOF_Y=BASE+2*FL+.3, PITCH=Math.PI/6, RISE=(HD/2)*Math.tan(PITCH), OVER=.5;
+const rafters=[]; for(let x=-HW/2-.3;x<=HW/2+.31;x+=.6) for(const s of [-1,1]) rafters.push([x,s]);
+const rafterMesh=new THREE.InstancedMesh(box,M.wood,rafters.length); rafterMesh.castShadow=true;
+const RL=(HD/2+OVER)/Math.cos(PITCH);
+{ const m=new THREE.Matrix4(); rafters.forEach(([x,s],i)=>{ const zc=s*(HD/2+OVER)/2, yc=ROOF_Y+RISE-((HD/2+OVER)/2)*Math.tan(PITCH);
+    m.compose(new THREE.Vector3(x,yc,zc),new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),s*PITCH),new THREE.Vector3(.045,.2,RL)); rafterMesh.setMatrixAt(i,m); }); }
+rafterMesh.count=0; house.add(rafterMesh);
+const roofPanels=[-1,1].map(s=>{ const m=mesh(box,M.roof,0,0,0,1,.14,RL+.1,house); m.rotation.x=s*PITCH;
+  m.userData.s=s; m.position.set(0,ROOF_Y+RISE-((HD/2+OVER)/2)*Math.tan(PITCH)+.14,s*(HD/2+OVER)/2); return m; });
+const ridge=mesh(box,M.dark,0,ROOF_Y+RISE+.17,0,HW+.8,.16,.3,house);
+// gables
+const gables=[-1,1].map(s=>{ const sh=new THREE.Shape(); sh.moveTo(-HD/2,0); sh.lineTo(HD/2,0); sh.lineTo(0,RISE); sh.closePath();
+  const g=new THREE.ShapeGeometry(sh); const m=new THREE.Mesh(g,M.clad); m.rotation.y=Math.PI/2; m.position.set(s*(HW/2+.06),ROOF_Y,0); m.material.side=THREE.DoubleSide; m.castShadow=true; house.add(m); return m; });
+// cladding pieces in build order
+const clads=[]; for(let f=0;f<2;f++){ const y=BASE+f*FL+(f?.25:0)+1.35;
+  clads.push(mesh(box,M.clad,0,y,HD/2+.05,HW+.1,2.75,.06,house), mesh(box,M.clad,HW/2+.05,y,0,.06,2.75,HD,house),
+             mesh(box,M.clad,0,y,-HD/2-.05,HW+.1,2.75,.06,house), mesh(box,M.clad,-HW/2-.05,y,0,.06,2.75,HD,house)); }
+claddingT.repeat.set(1/2.2,1/2.8);
+const trims=[]; for(const [x,z] of [[-1,-1],[1,-1],[-1,1],[1,1]]) trims.push(mesh(box,M.trim,x*(HW/2+.08),BASE+FL+.1,z*(HD/2+.08),.16,2*FL+.3,.16,house));
+// windows
+const wins=[];
+function win(x,y,z,w,h,face){ const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=face; house.add(g);
+  mesh(box,M.trim,0,0,0,w+.16,h+.16,.08,g); mesh(box,M.glass,0,0,.03,w,h,.06,g,false); mesh(box,M.trim,0,0,.06,.06,h,.03,g,false); wins.push(g); return g; }
+const F0=BASE+1.55, F1=BASE+FL+.25+1.55;
+[[-3.5,F0,1.2,1.3],[3.5,F0,1.2,1.3],[0,BASE+1.15,1.0,2.1],[-3.5,F1,1.2,1.3],[0,F1,1.2,1.3],[3.5,F1,1.2,1.3]].forEach(([x,y,w,h])=>win(x,y,HD/2+.1,w,h,0));
+[[-3.6,F0,2.6,1.7],[1.5,F0,1.2,1.3],[4.2,F0,1.2,1.3],[-3,F1,1.2,1.3],[0,F1,1.2,1.3],[3,F1,1.2,1.3]].forEach(([x,y,w,h])=>win(x,y,-HD/2-.1,w,h,Math.PI));
+[[F0],[F1]].forEach(([y])=>{ win(HW/2+.1,y,0,1.2,1.3,Math.PI/2); win(-HW/2-.1,y,0,1.2,1.3,-Math.PI/2); });
+// scaffolding
+const scaff=new THREE.Group(); house.add(scaff);
+{ const pipe=new THREE.CylinderGeometry(.03,.03,1,6); const pts=[]; const OX=HW/2+1.1, OZ=HD/2+1.1;
+  for(let x=-OX;x<=OX+.01;x+=OX*2/7) pts.push([x,-OZ],[x,-OZ+.8],[x,OZ],[x,OZ-.8]);
+  for(let z=-OZ+OZ*2/5;z<OZ-.1;z+=OZ*2/5) pts.push([-OX,z],[-OX+.8,z],[OX,z],[OX-.8,z]);
+  const inst=new THREE.InstancedMesh(pipe,M.steel,pts.length); const m=new THREE.Matrix4();
+  pts.forEach(([x,z],i)=>inst.setMatrixAt(i,m.compose(new THREE.Vector3(x,3.5,z),new THREE.Quaternion(),new THREE.Vector3(1,7,1)))); inst.castShadow=true; scaff.add(inst);
+  for(const y of [1.2,3.3,5.6]){ for(const s of [-1,1]){ mesh(box,M.wood,0,y,s*(OZ-.4),OX*2,.05,.75,scaff); mesh(box,M.wood,s*(OX-.4),y,0,.75,.05,OZ*2,scaff);
+      mesh(box,M.steel,0,y+1,s*OZ,OX*2,.05,.05,scaff,false); mesh(box,M.steel,s*OX,y+1,0,.05,.05,OZ*2,scaff,false); } }
+}
+// material stacks
+const lumberStack=new THREE.Group(); scene.add(lumberStack); lumberStack.position.set(8.5,0,-6.5);
+for(let i=0;i<4;i++) mesh(box,M.wood,0,.15+i*.32,0,4.8,.3,1.2,lumberStack);
+const pallet=new THREE.Group(); scene.add(pallet); pallet.position.set(-8.5,0,-6.8);
+mesh(box,M.wood,0,.08,0,1.2,.15,1,pallet); mesh(box,new THREE.MeshStandardMaterial({color:0x8d8f92,roughness:.9}),0,.6,0,1.1,.9,.9,pallet);
+
+// ---- machines ----
+function excavator(){ const g=new THREE.Group();
+  mesh(box,M.dark,0,.45,0,3.2,.9,2.4,g); const body=new THREE.Group(); body.position.y=.9; g.add(body);
+  mesh(box,M.yellow,-.3,.7,0,3,1.2,2.2,body); mesh(box,M.glass,.6,1.5,.55,1,1.1,.9,body); mesh(box,M.yellow,-1.6,.9,0,.8,1,2,body);
+  const boom=new THREE.Group(); boom.position.set(1.2,1.1,-.4); body.add(boom);
+  mesh(box,M.yellow,1.6,.6,0,3.4,.35,.35,boom).rotation.z=.4;
+  const stick=new THREE.Group(); stick.position.set(3.1,1.3,0); boom.add(stick);
+  mesh(box,M.yellow,.8,-1,0,.3,2.2,.3,stick).rotation.z=.4; mesh(box,M.dark,1.3,-2.1,0,.8,.6,.9,stick);
+  g.userData={body,boom,stick}; return g; }
+const exc=excavator(); exc.position.set(9.5,0,2); exc.rotation.y=Math.PI*.95; scene.add(exc);
+function truck(drum){ const g=new THREE.Group();
+  mesh(box,M.dark,0,.6,0,7,.4,2.3,g); mesh(box,M.white,2.8,1.6,0,1.6,1.9,2.3,g); mesh(box,M.glass,3.6,1.9,0,.06,.9,2,g,false);
+  const wg=new THREE.CylinderGeometry(.5,.5,.4,14); wg.rotateX(Math.PI/2);
+  for(const [x,z] of [[2.7,1.2],[2.7,-1.2],[-1.4,1.2],[-1.4,-1.2],[-2.6,1.2],[-2.6,-1.2]]) mesh(wg,M.dark,x,.5,z,1,1,1,g);
+  if(drum){ const d=new THREE.Mesh(new THREE.CylinderGeometry(.9,1.25,4,16),new THREE.MeshStandardMaterial({color:0xd8dcdf,roughness:.4,metalness:.3}));
+    d.rotation.z=Math.PI/2-.2; d.position.set(-.8,2,0); d.castShadow=true; g.add(d); g.userData.drum=d; }
+  else { for(let i=0;i<3;i++) mesh(box,M.wood,-.9,1.05+i*.3,0,5,.28,1.9,g); }
+  return g; }
+const mixer=truck(true); mixer.position.set(9,0,11.5); mixer.rotation.y=Math.PI; scene.add(mixer);
+const lorry=truck(false); lorry.position.set(-6,0,11.8); scene.add(lorry);
+// tower crane
+const crane=new THREE.Group(); crane.position.set(-12,0,-9); scene.add(crane);
+const MAST=24;
+{ mesh(box,M.conc,0,.3,0,3,.6,3,crane); const mast=new THREE.Mesh(new THREE.BoxGeometry(1.4,MAST,1.4),M.lattice); latticeT.repeat.set(1,MAST/1.4);
+  mast.position.y=MAST/2+.6; mast.castShadow=true; crane.add(mast); }
+const slew=new THREE.Group(); slew.position.y=MAST+.6; crane.add(slew);
+{ const jibT=latticeT.clone(); jibT.needsUpdate=true; jibT.repeat.set(30/1.2,1); const jm=M.lattice.clone(); jm.map=jibT;
+  const jib=new THREE.Mesh(new THREE.BoxGeometry(30,1.2,1.2),jm); jib.position.set(11,.6,0); jib.castShadow=true; slew.add(jib);
+  const cj=new THREE.Mesh(new THREE.BoxGeometry(9,1,1.2),jm); cj.position.set(-6.5,.5,0); slew.add(cj);
+  mesh(box,M.conc,-9.5,-.4,0,2,1.6,1.6,slew); mesh(box,M.yellow,1,-.9,1.1,1.6,1.6,1.4,slew); mesh(box,M.glass,1.85,-.8,1.1,.05,1,1.2,slew,false);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(.9,4,4),M.lattice); tip.position.set(0,3,0); slew.add(tip); }
+const trolley=mesh(box,M.dark,14,-.1,0,1,.4,1,slew,false);
+const cable=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,1,4),M.dark); slew.add(cable);
+const loadG=new THREE.Group(); slew.add(loadG); mesh(box,M.yellow,0,0,0,.4,.5,.4,loadG,false);
+for(let i=0;i<3;i++) mesh(box,M.wood,0,-1-i*.16,0,.9,.14,4,loadG);
+
+// ---- workers ----
+const workers=[]; const capG=new THREE.CapsuleGeometry(.24,.7,4,8), headG=new THREE.SphereGeometry(.16,10,8), hatG=new THREE.SphereGeometry(.19,10,6,0,Math.PI*2,0,Math.PI/2);
+for(let i=0;i<14;i++){ const g=new THREE.Group(); const legs=mesh(box,M.jeans,0,.42,0,.36,.84,.24,g); const body=mesh(capG,M.vest,0,1.18,0,1,1,1,g);
+  mesh(headG,M.skin,0,1.78,0,1,1,1,g); mesh(hatG,M.helmet,0,1.82,0,1,1,1,g); g.visible=false; scene.add(g);
+  workers.push({ g, tx:0, tz:0, wait:Math.random()*3, level:0, body }); }
+function pickTarget(w,stage){ const onDeck = stage>=2 && stage<5 && Math.random()<.35 && dispP[2]>.55;
+  if(stage===0){ w.level=0; const a=Math.random()*Math.PI*2; w.tx=Math.cos(a)*8; w.tz=Math.sin(a)*6.4; }
+  else if(onDeck){ w.level=BASE+FL+.25; w.tx=(Math.random()-.5)*(HW-1.5); w.tz=(Math.random()-.5)*(HD-1.5); }
+  else if(stage>=5){ w.level=BASE; w.tx=(Math.random()-.5)*(HW-2); w.tz=(Math.random()-.5)*(HD-2); }
+  else { w.level = stage>=2?BASE:0; const side=Math.random(); if(stage<2){ w.level=0; w.tx=(Math.random()-.5)*16; w.tz=(Math.random()<.5?-1:1)*(6+Math.random()*1.5); }
+    else { w.tx=(Math.random()-.5)*(HW+1); w.tz=(side<.5?-1:1)*(HD/2+.6); } }
+  w.wait=1.5+Math.random()*3; }
+
+// ---- weather particles ----
+const RAIN_N=2600; const rainPos=new Float32Array(RAIN_N*6);
+for(let i=0;i<RAIN_N;i++){ const x=(Math.random()-.5)*90, y=Math.random()*40, z=(Math.random()-.5)*90; rainPos.set([x,y,z,x+.05,y-.7,z],i*6); }
+const rainGeo=new THREE.BufferGeometry(); rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPos,3));
+const rain=new THREE.LineSegments(rainGeo,new THREE.LineBasicMaterial({ color:0xb8c7d6, transparent:true, opacity:.45 })); rain.visible=false; rain.frustumCulled=false; scene.add(rain);
+const SNOW_N=2500; const snowPos=new Float32Array(SNOW_N*3); for(let i=0;i<SNOW_N;i++) snowPos.set([(Math.random()-.5)*90,Math.random()*40,(Math.random()-.5)*90],i*3);
+const snowGeo=new THREE.BufferGeometry(); snowGeo.setAttribute('position',new THREE.BufferAttribute(snowPos,3));
+const snow=new THREE.Points(snowGeo,new THREE.PointsMaterial({ color:0xffffff, size:.22, map:dotT, transparent:true, depthWrite:false })); snow.visible=false; snow.frustumCulled=false; scene.add(snow);
+
+/* ---------- sync scene to simulation ---------- */
+const dispP=[0,0,0,0,0,0];
+const seasonGrass=[new THREE.Color(0xffffff),new THREE.Color(0xf2f0d8),new THREE.Color(0xd9cf9e),new THREE.Color(0xb9ab86),new THREE.Color(0xe6ebf0),new THREE.Color(0xf4f6f8)];
+const leafCols=[new THREE.Color(0x6f9a3a),new THREE.Color(0x8fa43a),new THREE.Color(0xd9a12a),new THREE.Color(0x9a6a2a),new THREE.Color(0x6a5a40),new THREE.Color(0x6a5a40)];
+let overNow=0, overTarget=0, lastSkyOver=-1;
+function syncScene(dt,t){
+  if(!S) return;
+  for(let i=0;i<6;i++){ const target=Math.min(1,S.prog[i]/S.work[i]); dispP[i]+= (target-dispP[i])*Math.min(1,dt*1.2); if(target>=1 && dispP[i]>.995) dispP[i]=1; }
+  const [pDig,pFound,pFrame,pRoof,pFac,pIn]=dispP;
+  // excavation
+  const depth=PIT_H*pDig; soil.visible = pDig<.999 && pFound<.05; soil.scale.y=Math.max(.001,PIT_H-depth); soil.position.y=-PIT_H+(PIT_H-depth)/2;
+  soilTop.position.y=-depth+.005; soilTop.material = pDig>.03 ? M.dirt : M.grass; soilTop.visible=soil.visible;
+  dirtPile.scale.setScalar(Math.max(.01,pDig)); dirtPile.visible = pDig>.02 && pFac<.6;
+  exc.visible = pDig<1 || pFound<.15;
+  const u=exc.userData; u.body.rotation.y=Math.sin(t*.7)*.5; u.boom.rotation.z=Math.sin(t*1.3)*.2-.1; u.stick.rotation.z=Math.sin(t*1.3+1)*.35;
+  // foundation
+  formwork.visible = pFound>0 && pFound<.98; gravelBed.visible = pFound>0;
+  const top = pFound<.3 ? -PIT_H+.3 : -PIT_H+.3 + (BASE+PIT_H-.3)*Math.min(1,(pFound-.3)/.7);
+  slab.visible = pFound>.3; slab.scale.y=Math.max(.01,top+PIT_H-.3); slab.position.y=-PIT_H+.3+slab.scale.y/2;
+  backfill.visible = pFound>=.98; mixer.visible = pFound>.2 && pFound<.98; if(mixer.userData.drum) mixer.userData.drum.rotation.y+=dt*2;
+  plot.material = pIn>.6 ? M.grass : M.dirt;
+  // frame
+  const half=studs.length/2;
+  studMesh.count = Math.floor(pFrame<.45 ? half*pFrame/.45 : pFrame<.55 ? half : half+half*(pFrame-.55)/.45);
+  plates.forEach((p,i)=>{ const floor = i<8?0:1; p.visible = floor===0 ? pFrame>.4 : pFrame>.95; });
+  deck.visible = pFrame>.45; deck.scale.x=Math.max(.01,Math.min(1,(pFrame-.45)/.1))*HW;
+  lorry.visible = pFrame>0 && pFrame<.35; lumberStack.visible = pFound>.9 && pRoof<.6;
+  // roof
+  rafterMesh.count = Math.floor(rafters.length*Math.min(1,pRoof/.5));
+  const rp=Math.max(0,(pRoof-.5)/.5); roofPanels.forEach(m=>{ m.visible=rp>0; m.scale.x=Math.max(.01,rp)*(HW+1); m.position.x=-(HW+1)/2+(HW+1)*rp/2; });
+  ridge.visible=pRoof>=.99;
+  // facade
+  const nClad=Math.floor(pFac/.7*clads.length); clads.forEach((c,i)=>c.visible = i<nClad || pFac>=.7);
+  gables.forEach(g=>g.visible = pFac>.55); trims.forEach(m=>m.visible=pFac>.8);
+  const nWin=Math.floor(Math.max(0,(pFac-.4)/.55)*wins.length); wins.forEach((w,i)=>w.visible=i<nWin);
+  M.glass.emissiveIntensity = pIn*.35 + (pIn>=1 ? .25 : 0);
+  scaff.visible = pFrame>.3 && pFac<.95;
+  // crane
+  crane.visible = pFound>.4 && pFac<.3 && S.craneDown===0 || (pFound>.4 && pFac<.3 && Math.floor(t*2)%2===0);
+  const active = S.phase===2||S.phase===3; const ang = active ? -0.35+Math.sin(t*.25)*.75 : -0.2; slew.rotation.y += (ang-slew.rotation.y)*Math.min(1,dt*.8);
+  const tr = active ? 10+Math.sin(t*.25+1)*4 : 12; trolley.position.x=tr; const drop = active ? 10+Math.sin(t*.5)*4 : 6;
+  cable.position.set(tr,-drop/2,0); cable.scale.y=drop; loadG.position.set(tr,-drop-.3,0); loadG.visible=active;
+  // season + weather look
+  const mf=Math.min(5,(S.week*7+15)/30.4); const mi=Math.floor(mf), mt=mf-mi, mi2=Math.min(5,mi+1);
+  const wx=S.done?'sun':S.weather[Math.min(S.week,S.weather.length-1)];
+  const snowy = wx==='snow' || (wx==='frost' && mi>=4);
+  M.grass.color.copy(seasonGrass[mi]).lerp(seasonGrass[mi2],mt); if(wx==='snow') M.grass.color.lerp(new THREE.Color(0xffffff),.6);
+  M.birchLeaf.color.copy(leafCols[mi]).lerp(leafCols[mi2],mt); birchLeafs.forEach(b=>b.visible = mf<3.6);
+  overTarget = wx==='rain'||wx==='storm'||wx==='snow' ? 1 : wx==='cloud'||wx==='frost' ? .45 : 0;
+  overNow += (overTarget-overNow)*Math.min(1,dt*.8);
+  if(Math.abs(overNow-lastSkyOver)>.08){ lastSkyOver=overNow; setSky(overNow); }
+  sunL.intensity = 4.6*(1-overNow*.78); hemi.intensity=.45+overNow*.55; renderer.toneMappingExposure=.55+overNow*.12;
+  scene.fog.color.setRGB(.79-overNow*.15,.84-overNow*.17,.89-overNow*.18); scene.fog.near=70-overNow*40; scene.fog.far=320-overNow*170;
+  rain.visible = (wx==='rain'||wx==='storm') && overNow>.5; snow.visible = wx==='snow' && overNow>.5;
+  if(rain.visible){ const a=rainGeo.attributes.position.array; const sp=(wx==='storm'?34:24)*dt; const wind=wx==='storm'?8*dt:0;
+    for(let i=0;i<RAIN_N;i++){ const k=i*6; a[k+1]-=sp; a[k+4]-=sp; a[k]+=wind; a[k+3]+=wind; if(a[k+1]<0){ a[k+1]+=40; a[k+4]+=40; } if(a[k]>45){ a[k]-=90; a[k+3]-=90; } } rainGeo.attributes.position.needsUpdate=true; }
+  if(snow.visible){ const a=snowGeo.attributes.position.array; for(let i=0;i<SNOW_N;i++){ const k=i*3; a[k+1]-=2*dt; a[k]+=Math.sin(t+i)*.3*dt; if(a[k+1]<0) a[k+1]+=40; } snowGeo.attributes.position.needsUpdate=true; }
+  // workers
+  const n = S.done ? 0 : Math.min(workers.length, Math.max(0,S.crew-S.sick)+S.temps);
+  workers.forEach((w,i)=>{ w.g.visible=i<n; if(i>=n) return;
+    const dx=w.tx-w.g.position.x, dz=w.tz-w.g.position.z, d=Math.hypot(dx,dz);
+    if(w.wait>0){ w.wait-=dt; w.body.rotation.x=Math.sin(t*9+i)*.12; if(w.wait<=0) pickTarget(w,S.phase); }
+    else if(d<.2){ w.wait=1.5+Math.random()*3; }
+    else { const sp=1.4*dt; w.g.position.x+=dx/d*Math.min(sp,d); w.g.position.z+=dz/d*Math.min(sp,d); w.g.rotation.y=Math.atan2(dx,dz); w.body.rotation.x=0; }
+    w.g.position.y += (w.level - w.g.position.y)*Math.min(1,dt*6); });
+}
+
+/* =====================================================================
+   UI
+   ===================================================================== */
+const $=id=>document.getElementById(id);
+const fmt=n=>{ const a=Math.abs(n), s=n<0?'−':''; return a>=1e6 ? s+(a/1e6).toFixed(2)+'M' : s+Math.round(a/1000)+'k'; };
+const stars=r=>{ const f=Math.round(r); return '★'.repeat(f)+'☆'.repeat(5-f); };
+let speed=1, weekT=0, paused=true, current=null;
+const WEEK_SEC=6;
+function toast(msg,kind=''){ if(!$('toasts')) return; const d=document.createElement('div'); d.className='toast '+kind; d.textContent=msg; $('toasts').prepend(d);
+  setTimeout(()=>d.remove(),4800); while($('toasts').children.length>4) $('toasts').lastChild.remove(); }
+window.toast=toast;
+function buildPhaseUI(){ $('phases').innerHTML = PHASES.map((p,i)=>`<div class="ph" id="ph${i}"><span>${p.icon}</span><span>${p.name}</span><span class="pc" id="pc${i}">0%</span><div class="bar"><i id="pb${i}" style="width:0"></i></div></div>`).join(''); }
+buildPhaseUI();
+function foremanTip(p){
+  const up=d=>S.fc[S.week+d]?.[d]; const wetSoon=[0,1,2].some(d=>{ const w=d===0?S.weather[S.week]:up(d); return w==='rain'||w==='storm'||w==='snow'; });
+  const frostSoon=[0,1,2].some(d=>{ const w=d===0?S.weather[S.week]:up(d); return w==='frost'||w==='snow'; });
+  if(wetSoon && (S.phase===2||S.phase===3||(S.phase===1&&frac(S,1)>.7)) && !S.tarp) return 'Wet weather ahead and the frame is open. Tarps keep it dry and keep us working.';
+  if(frostSoon && (S.phase===1||S.phase===4) && !S.tent) return 'Frost is coming. Concrete and facade work crawl in the cold. A winter tent fixes that.';
+  if(S.morale<50) return 'The crew is worn out. Drop the overtime or people will start calling in sick.';
+  if(p.late>0) return `At this pace we hand over in week ${p.weeks}: ${p.late} week${p.late>1?'s':''} late, ${fmt(p.late*LATE_FEE)} in fees. More crew or overtime would help.`;
+  if(S.tarp && S.phase>=4) return 'The roof is on. We can take the tarps down and save 3k a week.';
+  if(S.tent && S.phase===5) return 'Interior work doesn’t need the winter tent anymore.';
+  if(p.weeks < DEADLINE-1 && S.crew>6) return `We're ahead of schedule. You could drop a worker or two and save wages.`;
+  return 'On schedule. Keep an eye on the forecast.';
+}
+let uiT=0;
+function updateUI(){
+  if(!S) return; const p=projection();
+  $('sWeek').textContent=`${Math.min(S.week+1,99)} / ${DEADLINE}`; $('sSpent').textContent=fmt(S.spent);
+  const pe=$('sProfit'); pe.textContent=(p.profit>=0?'+':'')+fmt(p.profit); pe.className = p.profit>150000?'good':p.profit>0?'warnc':'badc';
+  $('sRep').textContent=stars(S.rep);
+  $('month').textContent=MONTHS[monthOf(S.week)];
+  $('fc').innerHTML = [0,1,2,3,4,5].map(d=>{ const w=S.week+d; const wx = d===0 ? S.weather[w] : S.fc[w][d]; const conf = d===0?5:Math.round(FC_ACC[d-1]*5);
+    return `<div class="${d===0?'now':''}" title="${WX[wx].n}">${d===0?'NOW':'W'+(w+1)}<i>${WX[wx].i}</i><u>${'●'.repeat(conf)}${'○'.repeat(5-conf)}</u></div>`; }).join('');
+  PHASES.forEach((ph,i)=>{ const f=Math.min(1,S.prog[i]/S.work[i]); $('pb'+i).style.width=(f*100).toFixed(1)+'%'; $('pc'+i).textContent=Math.floor(f*100)+'%';
+    $('ph'+i).className='ph'+(f>=1?' done':'')+(i===S.phase?' cur':''); });
+  const pr=$('proj'); pr.textContent = `week ${p.weeks}` + (p.late? ` · ${p.late} late` : p.weeks<DEADLINE ? ` · ${DEADLINE-p.weeks} early` : ' · on time');
+  pr.className = p.late>0?'badc':'good';
+  $('workRate').textContent = `${effCrew().toFixed(1)} units/wk`;
+  $('crewN').textContent=S.crew; $('crewCost').textContent=`${fmt(weeklyCost())} per week total`+(S.sick?` · ${S.sick} sick`:'')+(S.temps?` · ${S.temps} temps`:'');
+  $('tOt').setAttribute('aria-pressed',S.ot); $('tTarp').setAttribute('aria-pressed',S.tarp); $('tTent').setAttribute('aria-pressed',S.tent);
+  $('moraleBar').style.width=S.morale+'%'; $('moraleBar').style.background = S.morale>65?'var(--ok)':S.morale>45?'var(--warn)':'var(--bad)';
+  $('moraleTxt').textContent = S.morale>65?'Good':S.morale>45?'Tired':'Exhausted';
+  $('tipTxt').textContent=foremanTip(p);
+}
+function showEvent(e){
+  current=e; paused=true; $('event').hidden=false;
+  $('evWhen').textContent=`${e.icon}  Week ${S.week+1}`; $('evTitle').textContent=e.title; $('evText').textContent=e.text(S); $('evAdvice').textContent=e.advice(S);
+  const rec=e.rec(S); $('evOpts').innerHTML='';
+  e.options.forEach((o,i)=>{ const b=document.createElement('button'); b.className='opt'+(i===rec?' rec':''); b.innerHTML=`<b>${o.label}</b><small>${o.info}${i===rec?' · Lasse’s pick':''}</small>`;
+    b.onclick=()=>chooseOption(i); $('evOpts').appendChild(b); });
+  $('evOpts').querySelector('button')?.focus();
+}
+function chooseOption(i){ if(!current) return; const e=current; current=null; e.options[i].apply(S); S.log.push([`W${S.week+1}`,`${e.icon} ${e.title}: ${e.options[i].label}`,null]);
+  $('event').hidden=true; paused=false; updateUI(); if(S.done) showEnd(); }
+function showEnd(){
+  paused=true; const profit=S.revenue-S.spent; const late=Math.max(0,S.week-DEADLINE);
+  $('endTitle').textContent = profit>250000 ? 'Handed over. The client is delighted.' : profit>0 ? 'Handed over with a small profit.' : 'Handed over at a loss.';
+  const st = profit>300000?3:profit>150000?2:profit>0?1:0; $('endStars').textContent='★'.repeat(st)+'☆'.repeat(3-st);
+  $('endProfit').textContent=(profit>=0?'+':'')+fmt(profit); $('endProfit').className=profit>0?'good':'badc';
+  $('endWeek').textContent=`Week ${S.week}`+(late?` (${late} late)`:''); $('endRep').textContent=stars(S.rep);
+  const rows=S.log.filter(r=>r[2]===null || Math.abs(r[2])>=20000 && !/^Materials/.test(r[1]));
+  $('endLog').innerHTML = rows.map(r=>`<div><span>${r[0]} · ${r[1]}</span><span>${r[2]===null?'':(r[2]>0?'+':'')+fmt(r[2])}</span></div>`).join('') || '<div><span>A quiet job. No surprises.</span><span></span></div>';
+  $('endNote').textContent = S.crack ? 'The thick slab cracked after handover: warranty repair.' : S.mould ? 'Mould showed up in a wall: the client claimed damages.' :
+    profit>250000 ? 'Bigger contracts would unlock next: a semi-detached pair or a small apartment block.' : 'Every job plays differently. Weather, ground and surprises change each time.';
+  $('end').hidden=false; $('again').focus();
+}
+// controls
+$('crewMinus').onclick=()=>{ if(S&&S.crew>3){ S.crew--; updateUI(); } };
+$('crewPlus').onclick=()=>{ if(S&&S.crew<14){ S.crew++; updateUI(); } };
+$('tOt').onclick=()=>{ S.ot=!S.ot; updateUI(); };
+$('tTarp').onclick=()=>{ S.tarp=!S.tarp; if(S.tarp&&!S.tarpBought){ S.tarpBought=true; pay(25000,'Tarps & covers'); } updateUI(); };
+$('tTent').onclick=()=>{ S.tent=!S.tent; if(S.tent&&!S.tentBought){ S.tentBought=true; pay(60000,'Winter tent'); } updateUI(); };
+document.querySelectorAll('#speed button').forEach(b=>b.onclick=()=>{ speed=+b.dataset.s; document.querySelectorAll('#speed button').forEach(x=>x.setAttribute('aria-pressed',x===b)); });
+function begin(){ newGame(); for(let i=0;i<6;i++) dispP[i]=0; weekT=0; $('brief').hidden=true; $('end').hidden=true; paused=false;
+  workers.forEach((w,i)=>{ const a=i/workers.length*Math.PI*2; w.g.position.set(Math.cos(a)*9,0,Math.sin(a)*7); pickTarget(w,0); }); updateUI(); }
+$('start').onclick=begin; $('again').onclick=begin;
+addEventListener('keydown',e=>{ if(e.code==='Space' && $('event').hidden && $('brief').hidden && $('end').hidden){ e.preventDefault();
+  const b=document.querySelector(`#speed button[data-s="${speed===0?1:0}"]`); b.click(); }
+  if(current && /^[1-3]$/.test(e.key)) chooseOption(+e.key-1); });
+
+/* ---------- loop ---------- */
+newGame(1); updateUI();
+let last=performance.now(), ft=0, fn=0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.05,(now-last)/1000); last=now; const t=now/1000;
+  if(S && !paused && !S.done && speed>0){
+    weekT+=dt*speed;
+    if(weekT>=WEEK_SEC){ weekT=0; const e=stepWeek(); updateUI(); if(S.done) showEnd(); else if(e) showEvent(e); }
+  }
+  uiT+=dt; if(uiT>.5){ uiT=0; updateUI(); }
+  syncScene(dt,t); controls.update();
+  ft+=dt; fn++; if(fn===120){ if(useFx && ft/fn>.034){ useFx=false; } ft=0; fn=0; }
+  if(useFx) composer.render(); else renderer.render(scene,camera);
+}
+requestAnimationFrame(frame);
+
+// test hooks
+window.__CT = { get S(){ return S; }, newGame, stepWeek, projection, effCrew, EVENTS, PHASES, choose:(e,i)=>{ e.options[i].apply(S); },
+  finishCheck:()=>S.done, setPaused:v=>{ paused=v; }, showEnd, toastOff:()=>{ window.toast=()=>{}; } };
+</script>
+</body>
+</html>
