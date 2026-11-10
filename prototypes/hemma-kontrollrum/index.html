@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hemma – kontrollrum</title>
+<style>
+  :root{--bg:#0e110e;--side:#121612;--panel:rgba(22,28,22,.84);--line:rgba(190,210,175,.13);--text:#e9ede6;--dim:#8f9a8b;--acc:#ff7a2f;--ok:#7bd88f;--bad:#ff6b5b;--warm:#ffc061}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  .app{display:grid;grid-template-columns:230px 1fr;height:100vh}
+  aside{background:var(--side);border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:4px;overflow:auto}
+  .logo{font-weight:800;letter-spacing:.35em;font-size:20px;margin:0 0 4px 8px}
+  .sub{font-size:11px;letter-spacing:.14em;color:var(--dim);margin:0 0 20px 8px;border-left:2px solid var(--acc);padding-left:8px}
+  .sec{font-size:10px;letter-spacing:.18em;color:var(--dim);margin:14px 0 6px 8px}
+  .nav{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:14px;color:#cfd6cb;cursor:pointer;border:1px solid transparent}
+  .nav:hover{background:rgba(255,255,255,.03)}
+  .nav.on{background:rgba(255,122,47,.08);border-color:rgba(255,122,47,.35);color:#fff}
+  .nav i{font-style:normal;width:20px;text-align:center}
+  .sys{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 10px;color:#cfd6cb}
+  .sys b{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+  .add{font-size:13px;color:var(--acc);padding:6px 10px;cursor:pointer}
+  main{position:relative;padding:14px;display:flex;flex-direction:column;min-width:0}
+  .top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .top small{font-size:10px;letter-spacing:.18em;color:var(--dim)}
+  .top h1{margin:2px 0 0;font-size:20px;letter-spacing:.06em;font-weight:700}
+  .seg{display:flex;background:var(--side);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .seg button{background:none;border:0;color:var(--dim);padding:8px 14px;border-radius:7px;font-size:13px;cursor:pointer}
+  .seg button.on{background:var(--acc);color:#1a0d05;font-weight:650}
+  .stage{position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--line);min-height:0}
+  #v3d,#bp{position:absolute;inset:0}
+  #bp{display:none;background:#0f2238}
+  #bp svg{position:absolute;left:70px;top:0;width:calc(100% - 310px);height:100%}
+  .card{position:absolute;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+  .card h3{margin:0 0 6px;font-size:10px;letter-spacing:.16em;color:var(--dim);font-weight:600;display:flex;justify-content:space-between;gap:8px}
+  .big{font-size:24px;font-weight:600}.big span{font-size:12px;color:var(--dim);font-weight:400;margin-left:3px}
+  .chip{font-size:9px;letter-spacing:.04em;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.08);color:#cfd6cb;font-weight:500;text-transform:none}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;cursor:pointer}
+  .row .l{display:flex;flex-direction:column}.row .l em{font-style:normal;font-size:10px;color:var(--dim)}
+  .sw{width:30px;height:17px;border-radius:99px;background:#3a423a;position:relative;transition:.2s;flex:none}
+  .sw::after{content:"";position:absolute;width:13px;height:13px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.2s}
+  .sw.on{background:var(--acc)}.sw.on::after{left:15px}
+  .pill{font-size:11px;padding:2px 8px;border-radius:99px;flex:none}
+  .pill.ok{background:rgba(123,216,143,.14);color:var(--ok)}.pill.bad{background:rgba(255,107,91,.14);color:var(--bad)}
+  .feeds{display:flex;gap:6px}
+  .feed{width:110px;height:62px;border-radius:6px;background:linear-gradient(160deg,#2b352a,#121712);position:relative;font-size:10px;color:#cfd6cb;padding:4px 6px}
+  .feed::after{content:"● LIVE";position:absolute;right:5px;bottom:4px;color:var(--bad);font-size:9px;animation:bl 1.5s infinite}
+  @keyframes bl{50%{opacity:.3}}
+  .music{display:flex;gap:10px;align-items:center}
+  .art{width:38px;height:38px;border-radius:6px;background:linear-gradient(135deg,#ff7a2f,#b83280)}
+  .ctrl{display:flex;gap:12px;margin-top:6px;font-size:15px;cursor:pointer;user-select:none}
+  .vol{height:4px;background:#3a423a;border-radius:4px;margin-top:6px}.vol div{height:100%;width:40%;background:var(--acc);border-radius:4px}
+  .hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;background:var(--panel);border:1px solid var(--line);padding:7px 14px;border-radius:99px;font-size:12px;color:#cfd6cb;white-space:nowrap}
+  .tools{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+  .tool{width:54px;height:48px;border-radius:9px;background:rgba(0,0,0,.3);border:1px solid rgba(156,200,255,.2);color:#9cc8ff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:17px;cursor:pointer}
+  .tool small{font-size:9px}.tool.on{border-color:#9cc8ff;background:rgba(156,200,255,.12)}
+  @media (max-width:820px){
+    .app{grid-template-columns:1fr}
+    aside{display:none}
+    #cWeather,#cEnergy,#cCams{display:none}
+    .card{font-size:12px}
+    #cRight{width:190px!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="logo">HEMMA</div>
+    <div class="sub">MITT HUS · KONTROLLRUM</div>
+    <div class="sec">ÖVERSIKT</div>
+    <div class="nav on"><i>▦</i>Hemöversikt</div>
+    <div class="nav"><i>💡</i>Belysning & gardiner</div>
+    <div class="nav"><i>🔐</i>Dörrar & portar</div>
+    <div class="nav"><i>📹</i>Kameror</div>
+    <div class="nav"><i>🎵</i>Musik</div>
+    <div class="nav"><i>🌡️</i>Klimat</div>
+    <div class="nav"><i>⚡</i>El & solceller</div>
+    <div class="nav"><i>🌳</i>Trädgård & pool</div>
+    <div class="nav" data-go="ritning"><i>📐</i>Ritning & möbler</div>
+    <div class="sec">KOPPLADE SYSTEM</div>
+    <div class="sys">Apple Home <b></b></div>
+    <div class="sys">Homey <b></b></div>
+    <div class="sys">Philips Hue <b></b></div>
+    <div class="sys">Sonos / AirPlay <b></b></div>
+    <div class="sys">Kameror (RTSP) <b></b></div>
+    <div class="add">＋ Lägg till system</div>
+  </aside>
+
+  <main>
+    <div class="top">
+      <div><small>HEMMA / MITT HUS</small><h1>ÖVERSIKT</h1></div>
+      <div class="seg" id="seg">
+        <button data-m="ute" class="on">🏡 Utsidan</button>
+        <button data-m="inne">🛋️ Insidan · 3D</button>
+        <button data-m="ritning">📐 Ritning · 2D</button>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <div id="v3d"></div>
+      <div id="bp"><svg id="plan"></svg><div class="tools" id="tools"></div></div>
+
+      <div class="card" id="cWeather" style="left:12px;top:12px">
+        <h3>UTE / NU</h3>
+        <div class="big">6,5<span>°C</span></div>
+        <div style="color:var(--dim);font-size:12px">☁️ Molnigt · vind 4 m/s</div>
+      </div>
+
+      <div class="card" id="cEnergy" style="left:12px;bottom:12px;width:230px">
+        <h3>EL IDAG <span class="chip">Homey</span></h3>
+        <div class="big">0,93<span>kr/kWh nu</span></div>
+        <svg viewBox="0 0 200 50" width="100%" height="46"><polyline fill="none" stroke="#ff7a2f" stroke-width="1.6" points="0,38 15,40 30,39 45,35 60,30 75,33 90,36 105,31 120,24 135,12 145,6 155,15 170,22 185,28 200,30"/><line x1="0" y1="49" x2="200" y2="49" stroke="#3a423a"/></svg>
+      </div>
+
+      <div class="card" id="cCams" style="right:236px;bottom:12px">
+        <h3>KAMEROR <span class="chip">UniFi / Apple Home</span></h3>
+        <div class="feeds"><div class="feed">Entré</div><div class="feed">Altan</div></div>
+      </div>
+
+      <div id="cRight" style="position:absolute;right:12px;top:12px;width:214px;display:flex;flex-direction:column;gap:8px;max-height:calc(100% - 24px);overflow:auto">
+        <div class="card" style="position:static" id="cLights"><h3>BELYSNING</h3></div>
+        <div class="card" style="position:static" id="cLocks"><h3>ÖPPET / STÄNGT</h3></div>
+        <div class="card" style="position:static">
+          <h3>MUSIK <span class="chip">Sonos · AirPlay</span></h3>
+          <div class="music"><div class="art"></div><div><b style="font-size:13px">Kök + Vardagsrum</b><div style="font-size:11px;color:var(--dim)" id="mState">▶ Spelar</div></div></div>
+          <div class="ctrl"><span>⏮</span><span id="play">⏸</span><span>⏭</span></div>
+          <div class="vol"><div></div></div>
+        </div>
+      </div>
+
+      <div class="hint" id="hint">Klicka på huset för att gå in · dra för att snurra</div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ---------- house model (meters) ----------
+const rooms=[
+  {id:'vard',name:'Vardagsrum',x:0,z:0,w:6,d:5,floor:0x8a6a4a},
+  {id:'kok', name:'Kök',       x:6,z:0,w:6,d:5,floor:0x9a8a78},
+  {id:'sov', name:'Sovrum',    x:0,z:5,w:5,d:4,floor:0x7d6450},
+  {id:'hall',name:'Hall',      x:5,z:5,w:3,d:4,floor:0x6d6d6d},
+  {id:'bad', name:'Badrum',    x:8,z:5,w:4,d:4,floor:0xb8c2c8},
+];
+const walls=[[0,0,12,0],[12,0,12,9],[0,9,5.8,9],[7.2,9,12,9],[0,0,0,9],[0,5,5.5,5],[7.5,5,12,5],[6,0,6,1],[6,4,6,5],[5,5,5,6.5],[5,7.3,5,9],[8,5,8,7.8],[8,8.6,8,9]];
+const doors=[[5.8,9,1.4,270,360],[5,6.5,0.8,0,90],[8,7.8,0.8,90,180]];
+const furn=[
+  {n:'Soffa',x:0.6,z:0.4,w:3,d:1,h:0.8,c:0x5b6b5a},{n:'Bord',x:1.4,z:2.2,w:1.4,d:0.8,h:0.45,c:0x6b4e34},
+  {n:'TV',x:0.6,z:4.6,w:2.2,d:0.25,h:0.6,c:0x1a1a1a},{n:'Bänk',x:6.4,z:0.15,w:5.4,d:0.65,h:0.9,c:0xd9d4cc},
+  {n:'Ö',x:8,z:2,w:2.4,d:0.9,h:0.9,c:0xe8e2d8},{n:'Matbord',x:8.2,z:3.4,w:2,d:0.9,h:0.75,c:0x6b4e34},
+  {n:'Säng',x:0.4,z:6.4,w:1.8,d:2.1,h:0.5,c:0xd8d0c8},{n:'Garderob',x:3.2,z:8.3,w:1.6,d:0.6,h:1.1,c:0x8a7a6a},
+  {n:'Badkar',x:10.2,z:5.2,w:1.6,d:0.8,h:0.55,c:0xf2f4f6},{n:'WC',x:8.2,z:5.2,w:0.5,d:0.7,h:0.45,c:0xf2f4f6},
+];
+// each device says which system it lives in: the interface doesn't care
+const lights=[
+  {id:'vard',name:'Vardagsrum',src:'Hue'},{id:'kok',name:'Kök',src:'Apple Home'},{id:'sov',name:'Sovrum',src:'IKEA'},
+  {id:'hall',name:'Hall',src:'Homey'},{id:'bad',name:'Badrum',src:'Hue'},{id:'ute',name:'Trädgård',src:'Homey'}];
+const state={lights:{vard:true,kok:true,sov:false,hall:true,bad:false,ute:true},door:true,garage:false,play:true};
+const L=[]; const emit=()=>L.forEach(f=>f());
+const toggle=id=>{state.lights[id]=!state.lights[id];emit();};
+
+// ---------- cards ----------
+const cl=document.getElementById('cLights');
+cl.insertAdjacentHTML('beforeend',lights.map(l=>`<div class="row" data-l="${l.id}"><div class="l">${l.name}<em>via ${l.src}</em></div><span class="sw"></span></div>`).join(''));
+cl.querySelectorAll('[data-l]').forEach(r=>r.onclick=()=>toggle(r.dataset.l));
+const ck=document.getElementById('cLocks');
+ck.insertAdjacentHTML('beforeend',`<div class="row" data-x="door"><div class="l">Ytterdörr<em>via Apple Home</em></div><span class="pill"></span></div><div class="row" data-x="garage"><div class="l">Garageport<em>via Homey</em></div><span class="pill"></span></div>`);
+ck.querySelectorAll('[data-x]').forEach(r=>r.onclick=()=>{state[r.dataset.x]=!state[r.dataset.x];emit();});
+document.getElementById('play').onclick=()=>{state.play=!state.play;emit();};
+L.push(()=>{
+  cl.querySelectorAll('[data-l]').forEach(r=>r.querySelector('.sw').classList.toggle('on',state.lights[r.dataset.l]));
+  const d=ck.querySelector('[data-x=door] .pill');d.className='pill '+(state.door?'ok':'bad');d.textContent=state.door?'Låst':'Olåst';
+  const g=ck.querySelector('[data-x=garage] .pill');g.className='pill '+(state.garage?'bad':'ok');g.textContent=state.garage?'Öppen':'Stängd';
+  document.getElementById('play').textContent=state.play?'⏸':'▶';
+  document.getElementById('mState').textContent=state.play?'▶ Spelar · 40%':'⏸ Pausad';
+});
+
+// ---------- blueprint ----------
+function buildPlan(svg){
+  const S=50,PAD=70,W=12*S+PAD*2,H=9*S+PAD*2,P=v=>PAD+v*S; let g='';
+  svg.setAttribute('viewBox',`-40 0 ${W+40} ${H}`);
+  for(let i=-40;i<=W;i+=S/2) g+=`<line x1="${i}" y1="0" x2="${i}" y2="${H}" stroke="rgba(156,200,255,.07)"/>`;
+  for(let j=0;j<=H;j+=S/2) g+=`<line x1="-40" y1="${j}" x2="${W}" y2="${j}" stroke="rgba(156,200,255,.07)"/>`;
+  rooms.forEach(r=>{g+=`<rect class="rf" data-r="${r.id}" x="${P(r.x)}" y="${P(r.z)}" width="${r.w*S}" height="${r.d*S}" fill="transparent" style="cursor:pointer"/>
+    <text x="${P(r.x+r.w/2)}" y="${P(r.z+r.d/2)-10}" fill="#cfe4ff" font-size="13" text-anchor="middle" font-weight="600" pointer-events="none">${r.name}</text>
+    <text x="${P(r.x+r.w/2)}" y="${P(r.z+r.d/2)+6}" fill="#7fa8d8" font-size="11" text-anchor="middle" pointer-events="none">${r.w*r.d} m²</text>`;});
+  furn.forEach((f,i)=>g+=`<rect class="fu" data-f="${i}" width="${f.w*S}" height="${f.d*S}" rx="3" fill="rgba(127,168,216,.12)" stroke="#7fa8d8" stroke-width="1.2" style="cursor:grab"/>`);
+  walls.forEach(w=>g+=`<line x1="${P(w[0])}" y1="${P(w[1])}" x2="${P(w[2])}" y2="${P(w[3])}" stroke="#eaf3ff" stroke-width="6" stroke-linecap="square"/>`);
+  doors.forEach(([x,z,r,a0,a1])=>{const R=r*S,rad=d=>d*Math.PI/180;
+    g+=`<path d="M${P(x)} ${P(z)} L${P(x)+R*Math.cos(rad(a0))} ${P(z)+R*Math.sin(rad(a0))} A${R} ${R} 0 0 1 ${P(x)+R*Math.cos(rad(a1))} ${P(z)+R*Math.sin(rad(a1))}" fill="none" stroke="#9cc8ff" stroke-width="1.2"/>`;});
+  g+=`<line x1="${P(0)}" y1="${PAD-30}" x2="${P(12)}" y2="${PAD-30}" stroke="#9cc8ff"/><text x="${P(6)}" y="${PAD-36}" fill="#9cc8ff" font-size="13" text-anchor="middle">12,0 m</text>
+      <line x1="${PAD-30}" y1="${P(0)}" x2="${PAD-30}" y2="${P(9)}" stroke="#9cc8ff"/><text x="${PAD-38}" y="${P(4.5)}" fill="#9cc8ff" font-size="13" text-anchor="middle" transform="rotate(-90 ${PAD-38} ${P(4.5)})">9,0 m</text>`;
+  rooms.forEach(r=>g+=`<g class="lamp" data-r="${r.id}" style="cursor:pointer" transform="translate(${P(r.x+r.w/2)},${P(r.z+r.d/2)+28})"><circle r="14" class="glow"/><circle r="8" class="bulb" stroke="#ffc061" stroke-width="2"/><path d="M-5.5 -5.5L5.5 5.5M5.5 -5.5L-5.5 5.5" stroke="#ffc061" stroke-width="1.5"/></g>`);
+  svg.innerHTML=g;
+  svg.querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>toggle(el.dataset.r));
+  // move furniture lamps on top, then make furniture draggable
+  svg.querySelectorAll('.lamp').forEach(l=>svg.appendChild(l));
+  let drag=null;
+  const pt=e=>{const q=svg.createSVGPoint();q.x=e.clientX;q.y=e.clientY;return q.matrixTransform(svg.getScreenCTM().inverse());};
+  svg.querySelectorAll('.fu').forEach(el=>el.addEventListener('pointerdown',e=>{const f=furn[el.dataset.f],q=pt(e);drag={f,dx:(q.x-PAD)/S-f.x,dz:(q.y-PAD)/S-f.z};el.setPointerCapture(e.pointerId);}));
+  svg.addEventListener('pointermove',e=>{if(!drag)return;const q=pt(e);drag.f.x=Math.round(((q.x-PAD)/S-drag.dx)*10)/10;drag.f.z=Math.round(((q.y-PAD)/S-drag.dz)*10)/10;emit();});
+  svg.addEventListener('pointerup',()=>drag=null);
+  L.push(()=>{svg.querySelectorAll('.fu').forEach(r=>{const f=furn[r.dataset.f];r.setAttribute('x',P(f.x));r.setAttribute('y',P(f.z));});
+    svg.querySelectorAll('.lamp').forEach(l=>{const on=state.lights[l.dataset.r];
+    l.querySelector('.glow').setAttribute('fill',on?'rgba(255,192,97,.35)':'transparent');l.querySelector('.bulb').setAttribute('fill',on?'#ffc061':'none');});
+    svg.querySelectorAll('rect.rf').forEach(r=>r.setAttribute('fill',state.lights[r.dataset.r]?'rgba(255,192,97,.06)':'transparent'));});
+}
+buildPlan(document.getElementById('plan'));
+const tl=document.getElementById('tools');
+tl.innerHTML=[['🧱','Vägg'],['🚪','Dörr'],['🪟','Fönster'],['🛋️','Möbel'],['💡','Lampa'],['🌳','Ute'],['📷','Foto'],['📏','Mått']].map((t,i)=>`<div class="tool ${i?'':'on'}">${t[0]}<small>${t[1]}</small></div>`).join('');
+tl.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{tl.querySelectorAll('.tool').forEach(o=>o.classList.remove('on'));b.classList.add('on');});
+
+// ---------- 3D ----------
+const host=document.getElementById('v3d');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputEncoding=THREE.sRGBEncoding; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.95;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x141a14); scene.fog=new THREE.Fog(0x141a14,40,75);
+const cam=new THREE.PerspectiveCamera(34,1,0.1,200); cam.position.set(22,19,27);
+const controls=new THREE.OrbitControls(cam,renderer.domElement);
+controls.target.set(6.5,0,6); controls.enableDamping=true; controls.maxPolarAngle=1.3; controls.minDistance=10; controls.maxDistance=55;
+
+scene.add(new THREE.HemisphereLight(0x8fa6d6,0x1c2616,0.42));
+const sun=new THREE.DirectionalLight(0xffb27a,0.75); sun.position.set(-14,22,16); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048); Object.assign(sun.shadow.camera,{left:-18,right:18,top:18,bottom:-18}); sun.shadow.bias=-0.0005; scene.add(sun);
+
+const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.85},o));
+const box=(w,h,d,mat,x,y,z,parent=scene)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;parent.add(m);return m;};
+
+// ground
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(90,90),M(0x2a3d22)); ground.rotation.x=-Math.PI/2; ground.position.set(6,-0.06,6); ground.receiveShadow=true; scene.add(ground);
+box(5,0.04,16,M(0x8d877b),14.6,-0.03,8); // gravel drive
+box(6,0.1,4.2,M(0x8a6440),2.8,0,11.2); // deck
+const pool=box(3.6,0.12,1.9,M(0x2bb3d6,{roughness:.08,metalness:.1,emissive:0x0b5d78,emissiveIntensity:.35}),2.8,0.02,11.3);
+box(1.3,0.05,4,M(0x9a958c),6.5,-0.01,11); // path
+for(let i=0;i<14;i++){const x=6.5+Math.random()*0+(-1.2+(i%2)*2.4)*(i<7?1:1),z=9.6+Math.floor(i/2)*0.6;}
+// hedge / fence along deck
+box(6,0.9,0.12,M(0xb4844f),2.8,0.45,13.3);
+// trees
+[[-3,-3],[-3.5,4],[-3,12],[19,-3],[19.5,13],[8,-4],[2,-4.5]].forEach(([x,z])=>{
+  box(0.25,1.2,0.25,M(0x4a3020),x,0.6,z);
+  const t=new THREE.Mesh(new THREE.IcosahedronGeometry(1.4,0),M(0x1f3d1e,{flatShading:true})); t.position.set(x,2.3,z); t.scale.y=1.3; t.castShadow=true; scene.add(t);
+});
+// rocks
+[[-1.5,14],[9,14],[17,14.5],[-2,8]].forEach(([x,z])=>{const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.6,0),M(0x7a7a70,{flatShading:true}));r.position.set(x,0.2,z);r.castShadow=true;scene.add(r);});
+// garage + car
+box(4.4,2.6,5.6,M(0xe9e6df),14.6,1.3,2.8);
+const gRoof=box(4.8,0.25,6,M(0x2e3236),14.6,2.72,2.8);
+const garageDoor=box(3.2,2.1,0.1,M(0x6f757c,{metalness:.5,roughness:.4}),14.6,1.05,5.65);
+const car=new THREE.Group(); box(1.8,0.6,4.2,M(0x3a3f45,{metalness:.6,roughness:.35}),0,0.45,0,car); box(1.6,0.5,2.2,M(0x1c2228,{metalness:.5,roughness:.2}),0,0.95,-0.2,car); car.position.set(14.6,0,9); scene.add(car);
+
+// floors
+const floorMeshes=[];
+rooms.forEach(r=>{const f=box(r.w,0.1,r.d,M(r.floor,{roughness:.6}),r.x+r.w/2,0,r.z+r.d/2); f.userData.room=r.id; floorMeshes.push(f);});
+// walls: unit height, scaled for in/out
+const wallMeshes=[], capMeshes=[], wallMat=M(0xd8d3ca,{roughness:.9});
+walls.forEach(([x1,z1,x2,z2])=>{const len=Math.hypot(x2-x1,z2-z1),t=.16;
+  wallMeshes.push(box(x1===x2?t:len+t,1,x1===x2?len+t:t,wallMat,(x1+x2)/2,.5,(z1+z2)/2));
+  capMeshes.push(box(x1===x2?t+.01:len+t+.01,.03,x1===x2?len+t+.01:t+.01,M(0x2a2a2a),(x1+x2)/2,1,(z1+z2)/2));});
+const furnMeshes=furn.map((f,i)=>{const m=box(f.w,f.h,f.d,M(f.c,{roughness:.7}),0,f.h/2+.05,0);m.userData.f=i;return m;});
+L.push(()=>furnMeshes.forEach(m=>{const f=furn[m.userData.f];m.position.x=f.x+f.w/2;m.position.z=f.z+f.d/2;}));
+// windows (glow from the room behind)
+const windows=[['vard',3,-0.1,'x'],['kok',9,-0.1,'x'],['vard',-0.1,2.5,'z'],['sov',-0.1,7,'z'],['sov',2.5,9.1,'x'],['bad',10,9.1,'x'],['kok',4.5,-0.1,'x']].map(([r,x,z,a])=>{
+  const m=box(a==='x'?1.5:.06,1.1,a==='x'?.06:1.5,M(0x22303a,{roughness:.1,metalness:.3}),x,1.5,z); m.userData.room=r; m.castShadow=false; return m;});
+const doorMesh=box(1.2,2.1,0.1,M(0x3a2a1a),6.5,1.05,9.05);
+const doorLed=new THREE.Mesh(new THREE.SphereGeometry(.07),M(0x7bd88f,{emissive:0x7bd88f,emissiveIntensity:2})); doorLed.position.set(7.3,1.2,9.15); scene.add(doorLed);
+
+// roof: gable with solar panels
+const roof=new THREE.Group(); scene.add(roof);
+const roofMat=M(0x2d3135,{roughness:.7,transparent:true});
+const ang=Math.atan2(2,4.9), sl=Math.hypot(4.9,2);
+const rN=box(12.8,.14,sl,roofMat,6,3.6,2.05-.05,roof); rN.rotation.x=-ang;
+const rS=box(12.8,.14,sl,roofMat,6,3.6,6.95+.05,roof); rS.rotation.x=ang;
+for(let i=0;i<5;i++) for(let j=0;j<2;j++){const p=box(1.6,.06,1.2,M(0x14213a,{roughness:.25,metalness:.6,transparent:true}),-3.4+i*1.7,.1,-0.8+j*1.35,rS);}
+const gable=new THREE.Shape([new THREE.Vector2(-4.5,0),new THREE.Vector2(4.5,0),new THREE.Vector2(0,2)]);
+[0,12].forEach(x=>{const g=new THREE.Mesh(new THREE.ShapeGeometry(gable),M(0xf1eee8,{side:THREE.DoubleSide,transparent:true}));g.rotation.y=Math.PI/2;g.position.set(x,2.6,4.5);roof.add(g);});
+box(.3,1.2,.3,M(0x3a3a3a,{transparent:true}),9,4.3,3.5,roof); // chimney
+
+// room lights
+const roomLights={};
+rooms.forEach(r=>{const cx=r.x+r.w/2,cz=r.z+r.d/2;
+  const l=new THREE.PointLight(0xffb366,0,Math.max(r.w,r.d)*1.3,1.6); l.position.set(cx,2.1,cz); scene.add(l);
+  const b=new THREE.Mesh(new THREE.SphereGeometry(.17,12,10),M(0x444444)); b.position.set(cx,1.95,cz); scene.add(b);
+  roomLights[r.id]={l,b};});
+const garden=[];
+[[0,9.3],[5.6,13],[7.5,9.6],[7.5,12.5],[12.5,6.2],[16.8,6.2]].forEach(([x,z])=>{box(.1,.55,.1,M(0x222222),x,.28,z);
+  const b=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),M(0xffd38a,{emissive:0xffb84d,emissiveIntensity:2}));b.position.set(x,.6,z);scene.add(b);
+  const l=new THREE.PointLight(0xffb84d,1,4.5,2);l.position.set(x,.8,z);scene.add(l);garden.push([b,l]);});
+
+L.push(()=>{
+  rooms.forEach(r=>{const on=state.lights[r.id],o=roomLights[r.id];o.l.intensity=on?3:0;o.b.material.emissive.setHex(on?0xffb366:0);o.b.material.emissiveIntensity=on?2.5:0;});
+  windows.forEach(w=>{const on=state.lights[w.userData.room];w.material.emissive.setHex(on?0xffb35c:0);w.material.emissiveIntensity=on?1.1:0;});
+  garden.forEach(([b,l])=>{l.intensity=state.lights.ute?1:0;b.material.emissiveIntensity=state.lights.ute?2:0;});
+  const c=state.door?0x7bd88f:0xff6b5b; doorLed.material.color.setHex(c); doorLed.material.emissive.setHex(c);
+});
+emit();
+
+// ---------- modes ----------
+let mode='ute', t=0, camMove=false; const camOut=new THREE.Vector3(22,19,27),camIn=new THREE.Vector3(14,17,17),tgtOut=new THREE.Vector3(6.5,0,6),tgtIn=new THREE.Vector3(6,0,4.5); // t: 0 outside, 1 inside
+function setMode(m){
+  if(m!==mode&&m!=='ritning')camMove=true;
+  mode=m;
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('on',(m==='ritning')===(n.dataset.go==='ritning')&&(m==='ritning'||!n.dataset.go)&&(m==='ritning'||n===document.querySelector('.nav'))));
+  const bp=m==='ritning';
+  document.getElementById('bp').style.display=bp?'block':'none';
+  host.style.display=bp?'none':'block';
+  ['cWeather','cEnergy','cCams'].forEach(id=>document.getElementById(id).style.display=bp?'none':'');
+  document.getElementById('hint').textContent=bp?'✋ Dra möbler · 💡 klicka lampa · 🧱 rita väggar':m==='inne'?'✋ Dra möbler · 💡 klicka golvet = tänd/släck · dra tomt = snurra':'Klicka på huset för att gå in · dra för att snurra';
+  if(!bp) resize();
+}
+document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+document.querySelector('[data-go=ritning]').onclick=()=>setMode('ritning');
+document.querySelector('.nav').onclick=()=>setMode('ute');
+
+const ray=new THREE.Raycaster(),mv=new THREE.Vector2();let down=null;
+const floorPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),hitP=new THREE.Vector3();let drag3=null,dragged=false;
+function rayAt(e){const r=renderer.domElement.getBoundingClientRect();mv.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mv,cam);}
+renderer.domElement.addEventListener('pointerdown',e=>{camMove=false;down=[e.clientX,e.clientY];dragged=false;
+  if(mode!=='inne')return; rayAt(e); const h=ray.intersectObjects(furnMeshes)[0]; if(!h)return;
+  const f=furn[h.object.userData.f]; ray.ray.intersectPlane(floorPlane,hitP);
+  drag3={f,dx:hitP.x-f.x,dz:hitP.z-f.z}; controls.enabled=false; h.object.material.emissive.setHex(0x553311);drag3.m=h.object;});
+renderer.domElement.addEventListener('pointermove',e=>{if(!drag3)return;rayAt(e);if(!ray.ray.intersectPlane(floorPlane,hitP))return;
+  drag3.f.x=Math.round((hitP.x-drag3.dx)*10)/10;drag3.f.z=Math.round((hitP.z-drag3.dz)*10)/10;dragged=true;emit();});
+window.addEventListener('pointerup',()=>{if(drag3){drag3.m.material.emissive.setHex(0);drag3=null;controls.enabled=true;}});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(dragged){dragged=false;return;}
+  if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5)return;
+  const r=renderer.domElement.getBoundingClientRect(); mv.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1); ray.setFromCamera(mv,cam);
+  if(mode==='ute'){ if(ray.intersectObjects([...wallMeshes,...roof.children,...windows,doorMesh],true).length) setMode('inne'); return; }
+  const hit=ray.intersectObjects(floorMeshes)[0]; if(hit) toggle(hit.object.userData.room);
+});
+
+function resize(){const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(document.getElementById('stage'));
+(function loop(){
+  requestAnimationFrame(loop);
+  const target=mode==='inne'?1:0; t+=(target-t)*0.08;
+  const wh=2.6-(2.6-1.25)*t;
+  wallMeshes.forEach(w=>{w.scale.y=wh;w.position.y=wh/2;}); capMeshes.forEach(c=>c.position.y=wh+.01);
+  roof.position.y=t*7; roof.visible=t<0.6; roof.traverse(o=>{if(o.material){o.material.opacity=Math.max(0,1-t*1.8);}});
+  cam.position.lerp(mode==='inne'?camIn:camOut,camMove?0.06:0); controls.target.lerp(mode==='inne'?tgtIn:tgtOut,camMove?0.06:0); if(cam.position.distanceTo(mode==='inne'?camIn:camOut)<0.3)camMove=false;
+  windows.forEach(w=>w.visible=t<0.5); doorMesh.scale.y=1-0.45*t; doorMesh.position.y=1.05*(1-0.45*t);
+  garageDoor.position.y+=((state.garage?2.25:1.05)-garageDoor.position.y)*0.08;
+  controls.update(); renderer.render(scene,cam);
+})();
+</script>
+</body>
+</html>
