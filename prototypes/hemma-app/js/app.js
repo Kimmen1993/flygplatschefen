@@ -4,6 +4,7 @@ import { CATS, ITEMS, OPENINGS, PALETTE, FLOORS, HOME_TYPES } from './catalog.js
 import { createPlan } from './plan2d.js';
 import { createView } from './view3d.js';
 import { createHA } from './ha.js';
+import { detectPlan } from './autoplan.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -208,11 +209,12 @@ function roomPanel(r) {
 function bgPanel() {
   const b = home().bg;
   return `<h2>🖼️ Bild att rita på</h2>
-    <div class="steps"><div><b>1</b>Lägg in en planritning eller ett foto</div><div><b>2</b>Kalibrera: klicka två punkter och skriv avståndet</div><div><b>3</b>Rita rum och väggar ovanpå</div></div>
-    <div class="btns"><button class="btn acc" data-act="bgnew">${b ? 'Byt bild' : 'Välj bild'}</button>${b ? '<button class="btn" data-act="calib">📏 Kalibrera</button>' : ''}</div>
+    <div class="steps"><div><b>1</b>Lägg in en planritning</div><div><b>2</b>✨ Väggar, dörrar, fönster och rum skapas automatiskt</div><div><b>3</b>Skriv bostadens storlek (m²) så blir måtten rätt</div><div><b>4</b>Rätta det som blev fel – klicka och ändra</div></div>
+    <div class="btns"><button class="btn ${b ? '' : 'acc'}" data-act="bgnew">${b ? 'Byt bild' : 'Välj bild'}</button>${b ? '<button class="btn" data-act="calib">📏 Kalibrera</button>' : ''}</div>
+    ${b ? '<div class="btns"><button class="btn acc" data-act="auto">✨ Gör om till ritning automatiskt</button></div>' : ''}
     ${b ? `<label class="f" style="margin-top:12px">Synlighet<input type="range" min="10" max="100" value="${Math.round((b.opacity ?? .5) * 100)}" data-bgop></label>
       <div class="btns"><button class="btn danger" data-act="bgdel">Ta bort bild</button></div>` : ''}
-    <p class="note" style="margin-top:12px">Snart: AI som gör om foton av rummet till ritning automatiskt.</p>`;
+    <p class="note" style="margin-top:12px">Fungerar bäst med tydliga ritningar: svarta väggar på vit bakgrund, som från mäklare.</p>`;
 }
 
 // ---------- styrpanel ----------
@@ -267,6 +269,7 @@ right.addEventListener('click', e => {
   if (act === 'swing') { commit(); obj.swing = -obj.swing; emit('full'); return; }
   if (act === 'bgnew') return $('#fileImg').click();
   if (act === 'calib') { plan.calibrate(); window.toast('Klicka på två punkter i bilden'); return; }
+  if (act === 'auto') return autoPlan();
   if (act === 'bgdel') { commit(); h.bg = null; emit('full'); return; }
 });
 right.addEventListener('change', e => {
@@ -382,11 +385,14 @@ function newHomeDialog() {
     <button data-t="villa"><b>🏡</b>Exempelhus<br><span class="note">Färdigt att utgå från</span></button>
     <button data-t="lagenhet"><b>🏢</b>Lägenhet<br><span class="note">2 rok att ändra i</span></button>
     <button data-t="stuga"><b>🌲</b>Sommarstuga<br><span class="note">Liten stuga med altan</span></button>
-    <button data-t="tom"><b>✏️</b>Tomt<br><span class="note">Rita allt själv</span></button></div>
+    <button data-t="tom"><b>✏️</b>Tomt<br><span class="note">Rita allt själv</span></button>
+    <button data-t="plan" style="grid-column:1/-1"><b>🗺️</b>Från planritning<br><span class="note">Ladda upp en bild – väggar och rum skapas automatiskt</span></button></div>
     <div class="btns" style="margin-top:14px"><button class="btn" data-close>Avbryt</button></div>`);
   m.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
-    const h = template(b.dataset.t); S.homes.push(h); m.hidden = true; switchHome(h.id);
+    const plan_ = b.dataset.t === 'plan', h = template(plan_ ? 'tom-lagenhet' : b.dataset.t); if (plan_) h.name = 'Min bostad';
+    S.homes.push(h); m.hidden = true; switchHome(h.id);
     if (b.dataset.t === 'tom') { setMode('bygg'); S.view = 'split'; setTool('room'); renderTop(); }
+    if (plan_) { setMode('bygg'); S.view = 'split'; renderTop(); setTool('bild'); }
   });
 }
 function haDialog() {
@@ -400,6 +406,54 @@ function haDialog() {
     <div class="btns"><button class="btn" data-close>Stäng</button>${S.ha.url ? '<button class="btn danger" id="haOff">Koppla från</button>' : ''}<button class="btn acc" id="haGo">Anslut</button></div>`);
   m.querySelector('#haGo').onclick = () => { S.ha = { url: $('#haUrl').value.trim(), token: $('#haTok').value.trim() }; save(); ha.connect(S.ha.url, S.ha.token); m.hidden = true; };
   const off = m.querySelector('#haOff'); if (off) off.onclick = () => { S.ha = { url: '', token: '' }; save(); ha.disconnect(); ha.connect(); m.hidden = true; };
+}
+
+// ---------- planritning → hem ----------
+async function autoPlan() {
+  const h = home(); if (!h.bg) return;
+  if (h.walls.length && !confirm('Ersätta nuvarande väggar och rum med det som hittas i bilden?')) return;
+  const img = new Image(); img.src = h.bg.src; await img.decode();
+  const r = detectPlan(img);
+  if (!r.walls.length) return window.toast('Hittade inga väggar – prova en tydligare ritning');
+  commit();
+  const ts = r.walls.map(w => w.t).sort((a, b) => a - b), thinT = ts[Math.floor(ts.length * .25)];
+  const s = 0.12 / thinT, all = r.walls.flatMap(w => [w.a, w.b]);
+  const ox = Math.min(...all.map(p => p.x)), oy = Math.min(...all.map(p => p.y));
+  const P = p => ({ x: Math.round((p.x - ox) * s * 1000) / 1000, y: Math.round((p.y - oy) * s * 1000) / 1000 });
+  const T = t => Math.min(.4, Math.max(.08, Math.round(t * s * 100) / 100));
+  h.walls = []; h.rooms = []; h.openings = [];
+  for (const w of r.walls) h.walls.push({ id: uid(), a: P(w.a), b: P(w.b), t: T(w.t), h: h.ceiling, color: '#eeebe5' });
+  for (const gp of r.gaps) {
+    const a = P(gp.a), b = P(gp.b), L = Math.hypot(b.x - a.x, b.y - a.y), t = T(gp.t);
+    const wall = { id: uid(), a, b, t, h: h.ceiling, color: '#eeebe5' }; h.walls.push(wall);
+    const w = Math.round((L - t) * 100) / 100; if (w < .35) continue;
+    const key = gp.window ? 'fonster' : gp.exterior ? (w < 1.4 ? 'ytterdorr' : 'oppning') : (w > 1.3 ? 'oppning' : 'dorr');
+    h.openings.push({ id: uid(), key, kind: OPENINGS[key].kind, wall: wall.id, t: L / 2, w, h: OPENINGS[key].h, sill: OPENINGS[key].sill, color: OPENINGS[key].color,
+      hinge: 'L', swing: 1, blind: 'none', blindColor: '#ece6da', entity: '', blindEntity: '', name: '', state: { open: 0, blind: 0 } });
+  }
+  const rooms = [...r.rooms].sort((a, b) => b.area - a.area);
+  rooms.forEach((rm, i) => h.rooms.push({ id: uid(), name: 'Rum ' + (i + 1), pts: rm.pts.map(P), floor: '#b8915f', style: 'tra' }));
+  h.bg.x = -ox * s; h.bg.y = -oy * s; h.bg.mpp = r.kd * s; h.bg.opacity = .35;
+  S.tool = 'select'; S.sel = null; emit('full'); renderToolbar(); hint(); view.buildNow(); view.fitCam(); setTimeout(() => plan.fit(), 50);
+  areaDialog(r.walls.length, r.gaps.length, rooms.length);
+}
+function areaDialog(nw, ng, nr) {
+  const h = home(), cur = h.rooms.reduce((a, r) => a + polyArea(r.pts), 0);
+  const m = modal(`<h2>✨ Klart! Hittade ${nw} väggar, ${ng} dörrar/fönster och ${nr} rum</h2>
+    <p class="note">Nu behöver jag veta storleken så att måtten blir rätt.</p>
+    <label class="f">Hur många m² är bostaden? (står i annonsen)<input id="areaIn" inputmode="decimal" value="${Math.round(cur)}"></label>
+    <div class="btns"><button class="btn" data-close>Hoppa över</button><button class="btn acc" id="areaGo">Klar</button></div>
+    <p class="note" style="margin-top:12px">Sedan: klicka på ett rum för att döpa det och välja golv. Klicka på en dörr eller ett fönster för att ändra den.</p>`);
+  m.querySelector('#areaIn').select();
+  m.querySelector('#areaGo').onclick = () => {
+    const want = parseFloat(m.querySelector('#areaIn').value.replace(',', '.')); m.hidden = true;
+    if (!(want > 0) || !cur) return;
+    const k = Math.sqrt(want / cur), sc = p => ({ x: Math.round(p.x * k * 1000) / 1000, y: Math.round(p.y * k * 1000) / 1000 });
+    h.walls.forEach(w => { w.a = sc(w.a); w.b = sc(w.b); }); h.rooms.forEach(r => r.pts = r.pts.map(sc));
+    h.openings.forEach(o => { o.t *= k; o.w = Math.round(o.w * k * 100) / 100; }); h.items.forEach(i => { i.x *= k; i.y *= k; });
+    if (h.bg) { h.bg.x *= k; h.bg.y *= k; h.bg.mpp *= k; }
+    emit('full'); view.buildNow(); view.fitCam(); plan.fit(); window.toast(`Skalat till ${want} m² ✔`);
+  };
 }
 
 // ---------- filer ----------
@@ -419,7 +473,8 @@ $('#fileImg').addEventListener('change', async e => {
   const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
   c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   commit(); const h = home(); h.bg = { src: c.toDataURL('image/jpeg', .8), x: 0, y: 0, mpp: 15 / c.width, opacity: .5 };
-  S.tool = 'bild'; emit('full'); plan.calibrate(); window.toast('Klicka på två punkter du vet avståndet mellan'); renderToolbar(); hint();
+  S.tool = 'bild'; emit('full'); renderToolbar(); hint();
+  if (!h.walls.length) autoPlan(); else { plan.calibrate(); window.toast('Klicka på två punkter du vet avståndet mellan'); }
 });
 
 // ---------- tangentbord ----------
