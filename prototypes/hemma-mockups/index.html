@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hemma – riktningar</title>
+<style>
+  :root{--bg:#0b0f17;--panel:rgba(22,28,40,.78);--line:rgba(255,255,255,.08);--text:#e8ecf3;--dim:#8b95a8;--warm:#ffc061;--ok:#4ade80;--bad:#f87171;--blue:#0f2a4a;--bp:#9cc8ff}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;align-items:center;gap:12px;padding:12px 16px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0 8px 0 0;font-weight:650}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tab{background:#161c28;border:1px solid var(--line);color:var(--text);padding:8px 14px;border-radius:999px;cursor:pointer;font-size:14px}
+  .tab.on{background:var(--text);color:#0b0f17}
+  .tab .tip{font-size:11px;background:var(--warm);color:#000;border-radius:6px;padding:1px 6px;margin-left:6px}
+  main{position:relative;height:calc(100vh - 150px);min-height:420px;margin:0 16px;border-radius:18px;overflow:hidden;border:1px solid var(--line)}
+  .view{position:absolute;inset:0;display:none}
+  .view.on{display:block}
+  .v3d{position:absolute;inset:0}
+  .v3d canvas{display:block}
+  /* glass cards */
+  .cards{position:absolute;right:14px;top:14px;width:240px;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+  .card{background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;padding:12px;pointer-events:auto}
+  .card h3{margin:0 0 8px;font-size:12px;color:var(--dim);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:14px;cursor:pointer}
+  .sw{width:34px;height:20px;border-radius:99px;background:#334;position:relative;transition:.2s}
+  .sw::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.2s}
+  .sw.on{background:var(--warm)}.sw.on::after{left:16px}
+  .pill{font-size:12px;padding:2px 8px;border-radius:99px}
+  .pill.ok{background:rgba(74,222,128,.15);color:var(--ok)}.pill.bad{background:rgba(248,113,113,.15);color:var(--bad)}
+  .cams{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .cam{height:54px;border-radius:8px;background:linear-gradient(135deg,#1d2636,#0e131c);position:relative;font-size:10px;color:var(--dim);padding:4px}
+  .cam::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:50%;background:var(--bad);animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.2}}
+  .music{display:flex;align-items:center;gap:10px}
+  .music .art{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#f472b6,#fb923c)}
+  .music b{display:block;font-size:13px}.music span{font-size:12px;color:var(--dim)}
+  .hint{position:absolute;left:14px;bottom:14px;background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:12px;font-size:13px;color:var(--dim)}
+  /* blueprint */
+  .bp{position:absolute;inset:0;background:var(--blue);display:flex}
+  .tools{width:62px;background:rgba(0,0,0,.25);display:flex;flex-direction:column;gap:6px;padding:10px 8px;border-right:1px solid rgba(156,200,255,.15)}
+  .tool{height:44px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:18px;color:var(--bp);cursor:pointer;border:1px solid transparent}
+  .tool small{font-size:9px;margin-top:2px}
+  .tool.on{border-color:var(--bp);background:rgba(156,200,255,.1)}
+  .bp svg{flex:1;height:100%}
+  .split{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr}
+  .split > div{position:relative}
+  .split .bp{position:absolute}
+  .label{position:absolute;left:74px;top:12px;font-size:12px;background:rgba(0,0,0,.4);padding:4px 10px;border-radius:99px;color:#fff;z-index:2}
+  footer{display:flex;gap:10px;padding:10px 16px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--dim)}
+  .step{display:flex;align-items:center;gap:8px;background:#161c28;border:1px solid var(--line);padding:8px 12px;border-radius:12px;color:var(--text)}
+  .step i{font-style:normal;font-size:20px}
+  .arrow{color:var(--dim)}
+  @media (max-width:760px){
+    main{height:calc(100vh - 200px)}
+    .cards{width:180px;right:8px;top:8px}
+    .card{padding:9px}
+    .cams{display:none}
+    .split{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+    .tools{width:48px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏠 Hemma</h1>
+  <div class="tabs">
+    <button class="tab on" data-v="A">A · Dockskåp 3D</button>
+    <button class="tab" data-v="B">B · Ritning</button>
+    <button class="tab" data-v="C">C · Båda<span class="tip">Mitt tips</span></button>
+  </div>
+</header>
+
+<main>
+  <section class="view on" id="A">
+    <div class="v3d" id="slotA"></div>
+    <div class="cards" id="cardsA"></div>
+    <div class="hint">👆 Klicka på ett rum = tänd/släck · dra = snurra</div>
+  </section>
+
+  <section class="view" id="B">
+    <div class="bp">
+      <div class="tools" id="toolsB"></div>
+      <svg id="planB"></svg>
+    </div>
+    <div class="hint">✏️ Rita väggar · 🛋️ dra in möbler · 💡 klicka lampa</div>
+  </section>
+
+  <section class="view" id="C">
+    <div class="split">
+      <div><span class="label">✏️ Rita</span><div class="bp"><div class="tools" id="toolsC"></div><svg id="planC"></svg></div></div>
+      <div><span class="label">🏠 Styr</span><div class="v3d" id="slotC"></div><div class="cards" id="cardsC"></div></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>Foto → ritning:</span>
+  <span class="step"><i>📷</i>Fota rummet</span><span class="arrow">→</span>
+  <span class="step"><i>📏</i>Ange ett mått</span><span class="arrow">→</span>
+  <span class="step"><i>📐</i>Färdig ritning</span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ---------- shared house model (meters) ----------
+const rooms = [
+  {id:'vard', name:'Vardagsrum', x:0, z:0, w:6, d:5, floor:0x8a6a4a},
+  {id:'kok',  name:'Kök',        x:6, z:0, w:6, d:5, floor:0x9a8a78},
+  {id:'sov',  name:'Sovrum',     x:0, z:5, w:5, d:4, floor:0x7d6450},
+  {id:'hall', name:'Hall',       x:5, z:5, w:3, d:4, floor:0x6d6d6d},
+  {id:'bad',  name:'Badrum',     x:8, z:5, w:4, d:4, floor:0xb8c2c8},
+];
+const walls = [
+  [0,0,12,0],[12,0,12,9],[0,9,5.8,9],[7.2,9,12,9],[0,0,0,9],
+  [0,5,5.5,5],[7.5,5,12,5],[6,0,6,1],[6,4,6,5],
+  [5,5,5,6.5],[5,7.3,5,9],[8,5,8,7.8],[8,8.6,8,9]
+];
+const doors = [ // hinge x,z, radius, start angle, end angle (deg)
+  [5.8,9,1.4,270,360],[5,6.5,0.8,0,90],[8,7.8,0.8,90,180]
+];
+const furn = [
+  {n:'Soffa',x:0.6,z:0.4,w:3,d:1,h:0.8,c:0x5b6b8a},
+  {n:'Bord',x:1.4,z:2.2,w:1.4,d:0.8,h:0.45,c:0x6b4e34},
+  {n:'TV',x:0.6,z:4.6,w:2.2,d:0.25,h:0.6,c:0x1a1a1a},
+  {n:'Bänk',x:6.4,z:0.15,w:5.4,d:0.65,h:0.9,c:0xd9d4cc},
+  {n:'Ö',x:8,z:2,w:2.4,d:0.9,h:0.9,c:0xe8e2d8},
+  {n:'Matbord',x:8.2,z:3.4,w:2,d:0.9,h:0.75,c:0x6b4e34},
+  {n:'Säng',x:0.4,z:6.4,w:1.8,d:2.1,h:0.5,c:0xd8d0e0},
+  {n:'Garderob',x:3.2,z:8.3,w:1.6,d:0.6,h:1.1,c:0x8a7a6a},
+  {n:'Badkar',x:10.2,z:5.2,w:1.6,d:0.8,h:0.55,c:0xf2f4f6},
+  {n:'WC',x:8.2,z:5.2,w:0.5,d:0.7,h:0.45,c:0xf2f4f6},
+];
+const state = {lights:{vard:true,kok:true,sov:false,hall:true,bad:false,ute:true}, door:true, garage:false};
+const listeners = [];
+function setLight(id,v){ state.lights[id]=v; listeners.forEach(f=>f()); }
+function toggle(id){ setLight(id,!state.lights[id]); }
+
+// ---------- blueprint (SVG) ----------
+const S=50, PAD=70;
+function buildPlan(svg){
+  const W=12*S+PAD*2, H=9*S+PAD*2;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const P=v=>PAD+v*S;
+  let g='';
+  for(let i=0;i<=W;i+=S/2) g+=`<line x1="${i}" y1="0" x2="${i}" y2="${H}" stroke="rgba(156,200,255,${i%S?0.05:0.1})"/>`;
+  for(let j=0;j<=H;j+=S/2) g+=`<line x1="0" y1="${j}" x2="${W}" y2="${j}" stroke="rgba(156,200,255,${j%S?0.05:0.1})"/>`;
+  rooms.forEach(r=>{
+    g+=`<rect class="rf" data-r="${r.id}" x="${P(r.x)}" y="${P(r.z)}" width="${r.w*S}" height="${r.d*S}" fill="transparent" style="cursor:pointer"/>`;
+    g+=`<text x="${P(r.x+r.w/2)}" y="${P(r.z+r.d/2)-10}" fill="#cfe4ff" font-size="13" text-anchor="middle" font-weight="600" pointer-events="none">${r.name}</text>`;
+    g+=`<text x="${P(r.x+r.w/2)}" y="${P(r.z+r.d/2)+6}" fill="#7fa8d8" font-size="11" text-anchor="middle" pointer-events="none">${(r.w*r.d).toFixed(0)} m²</text>`;
+  });
+  furn.forEach(f=>{ g+=`<rect x="${P(f.x)}" y="${P(f.z)}" width="${f.w*S}" height="${f.d*S}" rx="3" fill="none" stroke="#7fa8d8" stroke-width="1.2" stroke-dasharray="${f.n==='Bänk'?'0':'0'}" pointer-events="none"/>`; });
+  walls.forEach(w=>{ g+=`<line x1="${P(w[0])}" y1="${P(w[1])}" x2="${P(w[2])}" y2="${P(w[3])}" stroke="#eaf3ff" stroke-width="6" stroke-linecap="square"/>`; });
+  doors.forEach(([x,z,r,a0,a1])=>{
+    const rad=d=>d*Math.PI/180, R=r*S;
+    const sx=P(x)+R*Math.cos(rad(a0)), sy=P(z)+R*Math.sin(rad(a0));
+    const ex=P(x)+R*Math.cos(rad(a1)), ey=P(z)+R*Math.sin(rad(a1));
+    g+=`<path d="M${P(x)} ${P(z)} L${sx} ${sy} A${R} ${R} 0 0 1 ${ex} ${ey}" fill="none" stroke="#9cc8ff" stroke-width="1.2"/>`;
+  });
+  // dimension lines
+  g+=`<line x1="${P(0)}" y1="${PAD-30}" x2="${P(12)}" y2="${PAD-30}" stroke="#9cc8ff"/><text x="${P(6)}" y="${PAD-36}" fill="#9cc8ff" font-size="13" text-anchor="middle">12,0 m</text>`;
+  g+=`<line x1="${PAD-30}" y1="${P(0)}" x2="${PAD-30}" y2="${P(9)}" stroke="#9cc8ff"/><text x="${PAD-38}" y="${P(4.5)}" fill="#9cc8ff" font-size="13" text-anchor="middle" transform="rotate(-90 ${PAD-38} ${P(4.5)})">9,0 m</text>`;
+  [0,12].forEach(x=>g+=`<line x1="${P(x)}" y1="${PAD-38}" x2="${P(x)}" y2="${PAD-22}" stroke="#9cc8ff"/>`);
+  [0,9].forEach(z=>g+=`<line x1="${PAD-38}" y1="${P(z)}" x2="${PAD-22}" y2="${P(z)}" stroke="#9cc8ff"/>`);
+  // lamps
+  rooms.forEach(r=>{ g+=`<g class="lamp" data-r="${r.id}" style="cursor:pointer" transform="translate(${P(r.x+r.w/2)},${P(r.z+r.d/2)+28})"><circle r="14" class="glow" fill="rgba(255,192,97,.25)"/><circle r="8" class="bulb" fill="none" stroke="#ffc061" stroke-width="2"/><path d="M-5.5 -5.5L5.5 5.5M5.5 -5.5L-5.5 5.5" stroke="#ffc061" stroke-width="1.5"/></g>`; });
+  // camera + door lock icons
+  g+=`<text x="${P(12)+8}" y="${P(0)+4}" font-size="16">📹</text><text x="${P(0)-24}" y="${P(9)+18}" font-size="16">📹</text>`;
+  g+=`<text class="lockIcon" x="${P(6.5)}" y="${P(9)+26}" font-size="16" text-anchor="middle" style="cursor:pointer">🔒</text>`;
+  svg.innerHTML=g;
+  svg.querySelectorAll('[data-r]').forEach(el=>el.addEventListener('click',()=>toggle(el.dataset.r)));
+  svg.querySelector('.lockIcon').addEventListener('click',()=>{state.door=!state.door;listeners.forEach(f=>f());});
+  const upd=()=>{
+    svg.querySelectorAll('.lamp').forEach(l=>{const on=state.lights[l.dataset.r];
+      l.querySelector('.glow').setAttribute('fill',on?'rgba(255,192,97,.35)':'transparent');
+      l.querySelector('.bulb').setAttribute('fill',on?'#ffc061':'none');});
+    svg.querySelectorAll('rect.rf').forEach(r=>r.setAttribute('fill',state.lights[r.dataset.r]?'rgba(255,192,97,.06)':'transparent'));
+    svg.querySelector('.lockIcon').textContent=state.door?'🔒':'🔓';
+  };
+  listeners.push(upd); upd();
+}
+function buildTools(el){
+  const t=[['🧱','Vägg'],['🚪','Dörr'],['🪟','Fönster'],['🛋️','Möbel'],['💡','Lampa'],['🌳','Trädgård'],['📷','Foto'],['📏','Mått']];
+  el.innerHTML=t.map((x,i)=>`<div class="tool ${i==0?'on':''}">${x[0]}<small>${x[1]}</small></div>`).join('');
+  el.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{el.querySelectorAll('.tool').forEach(o=>o.classList.remove('on'));b.classList.add('on');});
+}
+buildPlan(document.getElementById('planB')); buildPlan(document.getElementById('planC'));
+buildTools(document.getElementById('toolsB')); buildTools(document.getElementById('toolsC'));
+
+// ---------- control cards ----------
+function buildCards(el){
+  const names={vard:'Vardagsrum',kok:'Kök',sov:'Sovrum',hall:'Hall',bad:'Badrum',ute:'Trädgård'};
+  el.innerHTML=`
+   <div class="card"><h3>💡 Belysning</h3>${Object.keys(names).map(k=>`<div class="row" data-l="${k}">${names[k]}<span class="sw"></span></div>`).join('')}</div>
+   <div class="card"><h3>🔐 Öppet / stängt</h3>
+     <div class="row" data-x="door">Ytterdörr<span class="pill"></span></div>
+     <div class="row" data-x="garage">Garageport<span class="pill"></span></div></div>
+   <div class="card"><h3>📹 Kameror</h3><div class="cams"><div class="cam">Entré</div><div class="cam">Altan</div></div></div>
+   <div class="card"><h3>🎵 Musik</h3><div class="music"><div class="art"></div><div><b>Kök + Vardagsrum</b><span>▶ Spelar · 40%</span></div></div></div>`;
+  el.querySelectorAll('[data-l]').forEach(r=>r.onclick=()=>toggle(r.dataset.l));
+  el.querySelectorAll('[data-x]').forEach(r=>r.onclick=()=>{state[r.dataset.x]=!state[r.dataset.x];listeners.forEach(f=>f());});
+  const upd=()=>{
+    el.querySelectorAll('[data-l]').forEach(r=>r.querySelector('.sw').classList.toggle('on',state.lights[r.dataset.l]));
+    const d=el.querySelector('[data-x=door] .pill'); d.className='pill '+(state.door?'ok':'bad'); d.textContent=state.door?'Låst':'Olåst';
+    const g=el.querySelector('[data-x=garage] .pill'); g.className='pill '+(state.garage?'bad':'ok'); g.textContent=state.garage?'Öppen':'Stängd';
+  };
+  listeners.push(upd); upd();
+}
+buildCards(document.getElementById('cardsA')); buildCards(document.getElementById('cardsC'));
+
+// ---------- 3D dollhouse ----------
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled=true;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0b0f17);
+scene.fog=new THREE.Fog(0x0b0f17,35,70);
+const cam=new THREE.PerspectiveCamera(38,1,0.1,200);
+cam.position.set(19,17,22);
+const controls=new THREE.OrbitControls(cam,renderer.domElement);
+controls.target.set(6,0,4.5); controls.enableDamping=true; controls.maxPolarAngle=1.35; controls.minDistance=10; controls.maxDistance=50;
+controls.autoRotate=true; controls.autoRotateSpeed=0.4;
+renderer.domElement.addEventListener('pointerdown',()=>controls.autoRotate=false);
+
+scene.add(new THREE.HemisphereLight(0x4a5f8a,0x0b0f17,0.55));
+const moon=new THREE.DirectionalLight(0x8fa8ff,0.45); moon.position.set(-10,20,-8); moon.castShadow=true;
+moon.shadow.mapSize.set(1024,1024); Object.assign(moon.shadow.camera,{left:-15,right:15,top:15,bottom:-15}); scene.add(moon);
+
+const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.8},o));
+const box=(w,h,d,mat,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;scene.add(m);return m;};
+
+// ground + garden
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),M(0x1d3020)); ground.rotation.x=-Math.PI/2; ground.position.set(6,-0.06,4.5); ground.receiveShadow=true; scene.add(ground);
+box(6.5,0.08,3,M(0x5a4030),3,0,-1.6); // deck
+const pool=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.1,2),M(0x1fb5d9,{emissive:0x0a5e7a,emissiveIntensity:.8,roughness:.1})); pool.position.set(9.5,0,-2); scene.add(pool);
+box(1.4,0.06,4,M(0x6f6f6f),6.5,-0.02,11); // path
+[[ -2,-3],[-3,4],[-2.5,10],[14.5,-2],[15,6],[14,11.5]].forEach(([x,z])=>{
+  box(0.25,1.2,0.25,M(0x4a3020),x,0.6,z);
+  const t=new THREE.Mesh(new THREE.ConeGeometry(1.1,2.6,7),M(0x234d2a)); t.position.set(x,2.3,z); t.castShadow=true; scene.add(t);
+});
+const gardenLights=[];
+[[-0.8,-3.3],[6.8,-3.3],[5.5,10],[7.5,10],[13,-3.3]].forEach(([x,z])=>{
+  box(0.12,0.6,0.12,M(0x222222),x,0.3,z);
+  const b=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),M(0xffd38a,{emissive:0xffb84d,emissiveIntensity:2})); b.position.set(x,0.66,z); scene.add(b);
+  const l=new THREE.PointLight(0xffb84d,1.2,5,2); l.position.set(x,0.9,z); scene.add(l); gardenLights.push([b,l]);
+});
+
+// floors
+const floorMeshes=[];
+rooms.forEach(r=>{
+  const f=new THREE.Mesh(new THREE.BoxGeometry(r.w,0.1,r.d),M(r.floor,{roughness:.6}));
+  f.position.set(r.x+r.w/2,0,r.z+r.d/2); f.receiveShadow=true; f.userData.room=r.id; scene.add(f); floorMeshes.push(f);
+});
+// walls (cutaway height)
+const WH=1.25, wallMat=M(0xe9e4dc,{roughness:.9});
+walls.forEach(([x1,z1,x2,z2])=>{
+  const len=Math.hypot(x2-x1,z2-z1), t=0.14;
+  const w=box(x1===x2?t:len+t,WH,x1===x2?len+t:t,wallMat,(x1+x2)/2,WH/2,(z1+z2)/2);
+  w.userData.room=null;
+});
+// wall caps (dark top edge like a cut model)
+walls.forEach(([x1,z1,x2,z2])=>{const len=Math.hypot(x2-x1,z2-z1);box(x1===x2?0.15:len+0.15,0.02,x1===x2?len+0.15:0.15,M(0x2a2a2a),(x1+x2)/2,WH+0.01,(z1+z2)/2);});
+// furniture
+furn.forEach(f=>box(f.w,f.h,f.d,M(f.c,{roughness:.7}),f.x+f.w/2,f.h/2+0.05,f.z+f.d/2));
+// front door + garage
+const doorMesh=box(1.3,1.2,0.1,M(0x3a2a1a),6.5,0.6,9);
+const doorLed=new THREE.Mesh(new THREE.SphereGeometry(0.08),M(0x4ade80,{emissive:0x4ade80,emissiveIntensity:2})); doorLed.position.set(7.35,1.1,9.15); scene.add(doorLed);
+// garage box east side
+box(4,2.2,5.5,M(0x3b3f47),14.6,1.1,2.9);
+const garageDoor=box(0.1,1.9,3.6,M(0x9aa1ab,{metalness:.4,roughness:.4}),12.55,0.95,2.9);
+// cameras
+[[12.1,1.3,-0.1],[-0.1,1.3,9.1]].forEach(p=>{box(0.25,0.18,0.35,M(0xffffff),...p);const d=new THREE.Mesh(new THREE.SphereGeometry(0.04),M(0xff4444,{emissive:0xff2222,emissiveIntensity:3}));d.position.set(p[0],p[1]+0.12,p[2]);scene.add(d);});
+// speakers (music)
+[[0.4,0.3,4.6],[11.4,1.1,0.4]].forEach(p=>box(0.25,0.5,0.25,M(0x222222),...p));
+
+// room lights
+const roomLights={};
+rooms.forEach(r=>{
+  const cx=r.x+r.w/2, cz=r.z+r.d/2;
+  const l=new THREE.PointLight(0xffb366,0,Math.max(r.w,r.d)*1.2,1.6); l.position.set(cx,2.2,cz); scene.add(l);
+  const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.18,12,10),M(0x444444)); bulb.position.set(cx,1.9,cz); scene.add(bulb);
+  const cord=box(0.02,0.6,0.02,M(0x111111),cx,2.25,cz);
+  roomLights[r.id]={l,bulb};
+});
+function upd3d(){
+  rooms.forEach(r=>{const on=state.lights[r.id],o=roomLights[r.id];
+    o.l.intensity=on?3.2:0; o.bulb.material.emissive.setHex(on?0xffb366:0); o.bulb.material.emissiveIntensity=on?2.5:0;});
+  gardenLights.forEach(([b,l])=>{l.intensity=state.lights.ute?1.2:0;b.material.emissiveIntensity=state.lights.ute?2:0;});
+  doorLed.material.color.setHex(state.door?0x4ade80:0xf87171); doorLed.material.emissive.setHex(state.door?0x4ade80:0xf87171);
+  garageDoor.position.y=state.garage?2.3:0.95;
+}
+listeners.push(upd3d); upd3d();
+
+// click rooms in 3D
+const ray=new THREE.Raycaster(), mv=new THREE.Vector2(); let down=null;
+renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5) return;
+  const r=renderer.domElement.getBoundingClientRect();
+  mv.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+  ray.setFromCamera(mv,cam);
+  const hit=ray.intersectObjects(floorMeshes)[0]; if(hit) toggle(hit.object.userData.room);
+});
+
+// mount + resize
+let slot=document.getElementById('slotA');
+function mount(id){ slot=document.getElementById(id); slot.appendChild(renderer.domElement); resize(); }
+function resize(){ const w=slot.clientWidth,h=slot.clientHeight; if(!w||!h) return; renderer.setSize(w,h); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(document.querySelector('main'));
+mount('slotA');
+(function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,cam); })();
+
+// tabs
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(o=>o.classList.toggle('on',o===t));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id===t.dataset.v));
+  if(t.dataset.v==='A') mount('slotA'); if(t.dataset.v==='C') mount('slotC');
+});
+</script>
+</body>
+</html>
